@@ -137,6 +137,9 @@ function applyVariableHints(
     hints.showSeconds = info.showSeconds;
     const zone = vString(variable.options['timezone_id'], '');
     hints.timezone = zone !== '' ? zone : vString(settings['timezone'], '');
+    if (canonical === 'time' && /^z{1,3}$|^K$/.test(pattern)) {
+      return 'timezone';
+    }
     if (canonical === 'time' && info.dateOnly) {
       return 'date';
     }

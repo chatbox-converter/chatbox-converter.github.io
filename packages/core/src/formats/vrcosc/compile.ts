@@ -26,7 +26,30 @@ export interface CompileInput {
   readonly statusText: string;
   /** Skip community modules (only official + built-in sources). */
   readonly officialOnly?: boolean;
+  /** Media state of the compound state being compiled; drives the `{play_icon}` literal. */
+  readonly mediaState?: MediaState;
 }
+
+export type MediaState = 'playing' | 'paused' | 'stopped';
+
+/** `{play_icon}` has no variable: it is a literal that differs per media state. */
+export const PLAY_ICONS: Readonly<Record<MediaState, string>> = {
+  playing: '▶',
+  paused: '⏸',
+  stopped: '⏹',
+};
+
+/**
+ * Placeholders that reuse another placeholder's variable with different
+ * options: the same DateTime with a date/offset format, the progress variable
+ * without its visual bar, the speech result once VRCOSC has translated it.
+ */
+const ALIASED_SOURCES: Partial<Record<PlaceholderName, PlaceholderName>> = {
+  date: 'time',
+  timezone: 'time',
+  progress_percent: 'progress_bar',
+  translation: 'speech_text',
+};
 
 export interface CompiledVariable extends VrcVariable {
   readonly placeholder: PlaceholderName;
@@ -116,30 +139,38 @@ function variableOptions(
   if (source.moduleId === null && source.variableId === 'filereader') {
     return { file_location: options.kind === 'custom' ? options.filePath : '' };
   }
-  if (type === 'datetime' && options.kind === 'time') {
-    return {
-      datetime_format: datetimeFormatFor(options, name === 'date' ? 'date' : 'time'),
-      timezone_id: options.timezone,
-    };
-  }
   if (type === 'datetime') {
-    return { datetime_format: name === 'date' ? 'yyyy-MM-dd' : 'HH:mm', timezone_id: '' };
+    const zone = options.kind === 'time' ? options.timezone : '';
+    if (name === 'timezone') {
+      // .NET has no zone-abbreviation specifier; "zzz" renders the UTC offset (+02:00).
+      return { datetime_format: 'zzz', timezone_id: zone };
+    }
+    const target = name === 'date' ? 'date' : 'time';
+    return {
+      datetime_format:
+        options.kind === 'time' ? datetimeFormatFor(options, target) : DEFAULT_FORMATS[target],
+      timezone_id: zone,
+    };
   }
   if (type === 'timespan') {
     return { time_format: DEFAULT_TIMESPAN_FORMAT, include_negative_sign: true };
   }
   if (type === 'progress') {
-    return progressOptions(
+    const bar = progressOptions(
       options.kind === 'media'
         ? options.progressBar
         : { length: 10, filled: '━', empty: '━', position: '●', start: '┣', end: '┫' },
     );
+    // Without the visual bar the Progress variable renders "NN%".
+    return name === 'progress_percent' ? { ...bar, use_visual: false } : bar;
   }
   if (name === 'title' && options.kind === 'media' && options.titleMaxLength > 0) {
     return { truncate_length: options.titleMaxLength, include_ellipses: true };
   }
   return {};
 }
+
+const DEFAULT_FORMATS = { time: 'HH:mm', date: 'yyyy-MM-dd' } as const;
 
 function resolve(
   name: PlaceholderName,
@@ -152,7 +183,11 @@ function resolve(
       options: { text: input.statusText },
     };
   }
-  const source = pickSource(name, part.options, input.officialOnly === true);
+  const source = pickSource(
+    ALIASED_SOURCES[name] ?? name,
+    part.options,
+    input.officialOnly === true,
+  );
   if (source === undefined) {
     return undefined;
   }
@@ -202,6 +237,11 @@ export function compile(input: CompileInput): CompileResult {
         continue;
       }
       placeholders += 1;
+      if (token.name === 'play_icon') {
+        values[token.name] = PLAY_ICONS[input.mediaState ?? 'playing'];
+        kept += 1;
+        continue;
+      }
       const resolved = resolve(token.name, part, input);
       const moduleId = resolved?.source.moduleId ?? null;
       if (resolved === undefined) {

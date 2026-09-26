@@ -1,9 +1,10 @@
 import type { PlaceholderName } from '../../model/placeholders';
 import { activeStatus, type ChatboxProfile } from '../../model/profile';
 import { defaultSegmentOptions, type Segment } from '../../model/segments';
+import { placeholdersIn } from '../../model/template';
 import { DiagnosticCollector, type ConfigFile, type SerializeResult } from '../codec';
 import { findModule, officialModuleId, type VrcoscModule } from './catalog';
-import { compile, type CompilePart } from './compile';
+import { compile, type CompilePart, type MediaState } from './compile';
 import {
   DEFAULT_TIMELINE_LENGTH,
   MAX_TIMELINE_LENGTH,
@@ -59,6 +60,16 @@ function combinations(modules: readonly string[]): Combination[] {
     );
   }
   return result.map((states) => ({ states }));
+}
+
+/** The media module's state in this combination, if one is linked. */
+function mediaStateOf(combination: Combination): MediaState {
+  for (const [moduleId, stateId] of Object.entries(combination.states)) {
+    if (findModule(moduleId)?.mainState === 'playing') {
+      return stateId === 'paused' || stateId === 'stopped' ? stateId : 'playing';
+    }
+  }
+  return 'playing';
 }
 
 function segmentPartFor(
@@ -136,7 +147,7 @@ function planClip(
             segmentPartFor(segment, segmentModules[index] ?? [], combination, profile),
           )
           .filter((part): part is CompilePart => part !== undefined);
-    const compiled = compile({ ...base, parts });
+    const compiled = compile({ ...base, parts, mediaState: mediaStateOf(combination) });
     if (compiled.format === '') {
       continue;
     }
@@ -209,6 +220,19 @@ function moduleFile(moduleId: string, profile: ChatboxProfile): ConfigFile {
 function reportPlan(plan: ClipPlan, profile: ChatboxProfile, collector: DiagnosticCollector): void {
   for (const name of plan.unsupported) {
     collector.unsupported(`Placeholder {${name}}`);
+  }
+  const templates = profile.segments.filter((s) => s.enabled).map((s) => s.template);
+  if (templates.some((template) => placeholdersIn(template).includes('translation'))) {
+    collector.info(
+      'translation-app-side',
+      'VRCOSC translates speech in the app itself (Settings → Speech → Translate); {translation} was mapped to the speech-to-text result, which then already holds the translated text.',
+    );
+  }
+  if (templates.some((template) => placeholdersIn(template).includes('timezone'))) {
+    collector.info(
+      'timezone-offset',
+      '{timezone} is rendered as the UTC offset (e.g. +02:00); .NET date formats have no zone abbreviation.',
+    );
   }
   for (const name of plan.stateless) {
     collector.warn(

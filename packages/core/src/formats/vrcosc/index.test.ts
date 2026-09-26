@@ -606,3 +606,76 @@ describe('catalog', () => {
     ).toBeGreaterThan(40);
   });
 });
+
+describe('vrcoscCodec converter-only mappings', () => {
+  const profile = createDefaultProfile({
+    afk: { enabled: false, timeoutSeconds: 120, template: '', replaceEverything: false },
+    segments: [
+      createSegment('time', {
+        id: 't',
+        template: '{time} {date} {timezone}',
+        options: {
+          kind: 'time',
+          use24Hour: true,
+          showSeconds: false,
+          timezone: 'Europe/Berlin',
+          showTimezone: true,
+        },
+      }),
+      createSegment('media', { id: 'm', template: '{play_icon} {artist} {progress_percent}' }),
+      createSegment('speech', { id: 's', template: '{speech_text} → {translation}' }),
+    ],
+  });
+
+  it('maps date, timezone, progress_percent, play_icon and translation without losses', () => {
+    const { files, diagnostics } = vrcoscCodec.serialize(profile);
+    expect(diagnostics.filter((d) => d.code === 'unsupported-feature')).toEqual([]);
+    expect(diagnostics.map((d) => d.code)).toEqual(
+      expect.arrayContaining(['translation-app-side', 'timezone-offset']),
+    );
+    const chatbox = files.find((f) => f.path === 'chatbox.json');
+    const doc = JSON.parse(chatbox?.content ?? '{}') as {
+      timeline: {
+        clips: {
+          states: {
+            format: string;
+            variables: { variable_id: string; options: Record<string, unknown> }[];
+            states: Record<string, string>;
+          }[];
+        }[];
+      };
+    };
+    const states = doc.timeline.clips[0]?.states ?? [];
+    const playing = states.find(
+      (s) => s.states['volcanicarts.vrcosc.officialmodules.mediamodule'] === 'playing',
+    );
+    const paused = states.find(
+      (s) => s.states['volcanicarts.vrcosc.officialmodules.mediamodule'] === 'paused',
+    );
+    expect(playing?.format).toBe('{0} {1} {2}\n▶ {3} {4}\n{5} → {5}');
+    expect(paused?.format).toContain('⏸');
+    const formats = playing?.variables.map((v) => [
+      v.variable_id,
+      v.options['datetime_format'],
+      v.options['use_visual'],
+    ]);
+    expect(formats).toEqual([
+      ['now', 'HH:mm', undefined],
+      ['now', 'yyyy-MM-dd', undefined],
+      ['now', 'zzz', undefined],
+      ['artist', undefined, undefined],
+      ['progressvisual', undefined, false],
+      ['text', undefined, undefined],
+    ]);
+    expect(playing?.variables[2]?.options['timezone_id']).toBe('Europe/Berlin');
+  });
+
+  it('reads the offset format back as {timezone} and the bar-less progress as {progress_percent}', () => {
+    const { files } = vrcoscCodec.serialize(profile);
+    const back = vrcoscCodec.parse(files).profile;
+    const templates = back.segments.map((s) => s.template).join('\n');
+    expect(templates).toContain('{timezone}');
+    expect(templates).toContain('{progress_percent}');
+    expect(templates).toContain('{date}');
+  });
+});
