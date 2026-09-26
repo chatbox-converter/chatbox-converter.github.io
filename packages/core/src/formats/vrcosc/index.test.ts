@@ -247,7 +247,9 @@ describe('vrcoscCodec.parse', () => {
 
 describe('vrcoscCodec.serialize', () => {
   it('writes a valid single-clip document for the default profile', () => {
-    const profile = createDefaultProfile();
+    const profile = createDefaultProfile({
+      segments: [createSegment('status'), createSegment('time')],
+    });
     const { files, diagnostics } = vrcoscCodec.serialize(profile);
     expect(files.map((file) => file.path)).toEqual(['chatbox.json', `modules/${DATETIME}.json`]);
     const document = chatboxOf(files);

@@ -1,4 +1,4 @@
-import { createSegment, type Segment } from './segments';
+import { createSegment, type Segment, type SegmentKind } from './segments';
 
 export const FORMAT_IDS = ['magicchatbox', 'vrcosc', 'dreamchatbox', 'native'] as const;
 export type FormatId = (typeof FORMAT_IDS)[number];
@@ -111,9 +111,41 @@ export function createDefaultProfile(overrides: Partial<ChatboxProfile> = {}): C
       sendIntervalSeconds: 1.5,
     },
     osc: overrides.osc ?? { host: '127.0.0.1', port: 9000 },
-    segments: overrides.segments ?? [createSegment('status'), createSegment('time')],
+    segments: overrides.segments ?? defaultSegments(),
     extras: overrides.extras ?? {},
   };
+}
+
+/**
+ * MagicChatbox's default integration list, order, master toggles and desktop/VR
+ * gates (IntegrationSettings defaults), so a fresh profile looks like a fresh
+ * MagicChatbox install.
+ */
+const DEFAULT_SEGMENT_TABLE: readonly (readonly [SegmentKind, boolean, boolean, boolean])[] = [
+  // kind, enabled, desktop, vr
+  ['status', true, true, true],
+  ['window', false, true, false],
+  ['twitch', false, true, true],
+  ['tiktok', false, true, true],
+  ['discord', false, true, true],
+  ['media', true, true, true],
+  ['vrchat', false, true, true],
+  ['heartrate', false, false, true],
+  ['hardware', false, false, true],
+  ['vr_performance', false, true, true],
+  ['vr_battery', false, true, true],
+  ['network', false, true, false],
+  ['weather', true, false, true],
+  ['time', true, false, true],
+  ['soundpad', false, true, false],
+  ['voicemod', false, true, true],
+  ['lyrics', false, true, true],
+];
+
+export function defaultSegments(): Segment[] {
+  return DEFAULT_SEGMENT_TABLE.map(([kind, enabled, desktop, vr]) =>
+    createSegment(kind, { id: `default-${kind}`, enabled, visibility: { desktop, vr } }),
+  );
 }
 
 export function effectiveCharLimit(output: OutputSettings): number {

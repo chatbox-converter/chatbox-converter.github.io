@@ -24,7 +24,7 @@ describe('ConvertPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Load into the editor')).toBeTruthy();
     });
-    expect(screen.getByText(/2 integrations, 1 statuses/)).toBeTruthy();
+    expect(screen.getByText(/17 integrations, 1 statuses/)).toBeTruthy();
   });
 
   it('reports unreadable input', async () => {

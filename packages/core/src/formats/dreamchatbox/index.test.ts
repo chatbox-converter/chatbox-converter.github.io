@@ -204,7 +204,9 @@ describe('dreamchatboxCodec.parse (legacy config)', () => {
 
 describe('dreamchatboxCodec.serialize', () => {
   it('serializes the default profile to a config that parses back equivalently', () => {
-    const profile = createDefaultProfile();
+    const profile = createDefaultProfile({
+      segments: [createSegment('status'), createSegment('time')],
+    });
     const result = dreamchatboxCodec.serialize(profile);
     expect(result.files.map((f) => f.path)).toEqual(['config.json', 'profiles/My chatbox.json']);
     expect(result.files[0]?.content.endsWith('}\n')).toBe(true);

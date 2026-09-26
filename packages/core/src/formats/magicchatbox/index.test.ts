@@ -348,7 +348,9 @@ describe('magicchatboxCodec.serialize', () => {
   ];
 
   it('writes the complete file set for the default profile', () => {
-    const { files, diagnostics } = magicchatboxCodec.serialize(createDefaultProfile());
+    const { files, diagnostics } = magicchatboxCodec.serialize(
+      createDefaultProfile({ segments: [createSegment('status'), createSegment('time')] }),
+    );
     const names = files.map((file) => file.path);
     for (const expected of EXPECTED_FILES) {
       expect(names).toContain(expected);
