@@ -152,7 +152,8 @@ export function reportToCanonical(
 
 export const PLUGIN_LABELS: Readonly<Record<PluginId, string>> = {
   world_stats: 'World Stats',
-  vrcosc_modules: 'VRCOSC Modules (Linux)',
+  life_stats: 'Life Stats',
+  vrcosc_modules: 'Linux Extras (from VRCOSC)',
   stream_stats: 'Stream Stats',
   social_media: 'Social Media',
 };

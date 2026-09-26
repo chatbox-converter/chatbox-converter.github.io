@@ -1,7 +1,7 @@
 import { isJsonObject, type JsonObject, type JsonValue } from '../../util/json';
 
 /**
- * OSC-DreamChatbox defaults (`ui/config_mixin.py:157-506`, v1.5.6) and the
+ * OSC-DreamChatbox defaults (`ui/config_mixin.py:157-508`, v1.5.8) and the
  * key-presence migrations `load_config` applies on every load.
  */
 export const STATUS_SLOTS = 20;
@@ -26,9 +26,11 @@ export const TEXT_STYLES = ['normal', 'super', 'sub'] as const;
 export const BOX_MODES = ['none', 'clock', 'custom'] as const;
 export const CLOCK_FORMATS = ['hm24', 'hms24', 'hm12', 'hm12ap'] as const;
 
-/** Keys that belong to the machine, not to a profile (`core/profiles.py:37-48`). */
+/** Keys that belong to the machine, not to a profile (`core/profiles.py:63-73`, 19 since v1.5.7). */
 export const APP_WIDE_KEYS: readonly string[] = [
   'profile_active',
+  'profile_plugins_asked',
+  'profile_save_on_exit',
   'osc_ip',
   'osc_port',
   'oscquery_enabled',
@@ -107,6 +109,8 @@ function defaultsPart1(): JsonObject {
     media_lyrics_dir: '',
     media_lyrics_prefix_on: true,
     media_lyrics_prefix: '♪',
+    // v1.5.7: Options › Profiles, save the active profile on exit (app-wide)
+    profile_save_on_exit: true,
     media_lyrics_max: 144,
     media_show_bar: true,
     oscquery_enabled: true,

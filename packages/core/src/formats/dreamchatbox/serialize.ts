@@ -15,7 +15,6 @@ import {
 import {
   AIO_MAX,
   APP_ORDER_KEYS,
-  APP_WIDE_KEYS,
   MAX_STATUS_CYCLE_SEC,
   MIN_STATUS_CYCLE_SEC,
   STATUS_SLOTS,
@@ -29,6 +28,13 @@ import {
   num,
   str,
 } from './defaults';
+import {
+  DEFAULT_PROFILE_NAME,
+  EXPORT_SUFFIX,
+  exportEnvelope,
+  profileFileBody,
+  readDreamExtras,
+} from './export';
 import { normalizeConfig } from './normalize';
 import { PLUGIN_LABELS, canonicalToDream, reportToDream } from './tokens';
 
@@ -43,8 +49,8 @@ interface SerializeState {
 }
 
 export function serializeDream(profile: ChatboxProfile): SerializeResult {
-  const extras = profile.extras.dreamchatbox;
-  const cfg = normalizeConfig(isJsonObject(extras) ? extras : {});
+  const extras = readDreamExtras(profile.extras.dreamchatbox);
+  const cfg = normalizeConfig(extras.config);
   const state: SerializeState = { cfg, profile, collector: new Collector(), plugins: new Set() };
   writeStatuses(state);
   writeAfk(state);
@@ -59,15 +65,21 @@ export function serializeDream(profile: ChatboxProfile): SerializeResult {
       'config.json',
     );
   }
-  const name = cleanProfileName(profile.meta.name);
+  // v1.5.7: every install has a profile, a fresh one is called "Default"
+  const name = cleanProfileName(profile.meta.name) || DEFAULT_PROFILE_NAME;
   cfg['profile_active'] = name;
-  const files: ConfigFile[] = [{ path: 'config.json', content: stringifyPretty(cfg) }];
-  if (name !== '') {
-    const body = Object.fromEntries(
-      Object.entries(cfg).filter(([key]) => !APP_WIDE_KEYS.includes(key)),
-    );
-    files.push({ path: `profiles/${name}.json`, content: stringifyPretty(body) });
-  }
+  const body = profileFileBody(cfg, extras.profile);
+  const exportPath = `${name}${EXPORT_SUFFIX}`;
+  state.collector.info(
+    'profile-export',
+    `${exportPath} imports in one step: Options › General › Profiles › Import (OSC-DreamChatbox v1.5.7 or newer). It never changes the OSC target or theme; copy config.json over ~/.config/OSC-DreamChatbox/config.json for those.`,
+    exportPath,
+  );
+  const files: ConfigFile[] = [
+    { path: exportPath, content: stringifyPretty(exportEnvelope(name, body, extras.profile)) },
+    { path: 'config.json', content: stringifyPretty(cfg) },
+    { path: `profiles/${name}.json`, content: stringifyPretty(body) },
+  ];
   return { files, diagnostics: state.collector.all() };
 }
 

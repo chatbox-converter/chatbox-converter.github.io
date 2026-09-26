@@ -1,8 +1,28 @@
 # DreamChatbox ↔ neutral model mapping
 
-Format reference: `.references/notes/dreamchatbox-format.md` (v1.5.6). Files: `config.json`
-(+ `profiles/<name>.json` = same object minus the 17 `APP_WIDE_KEYS`). Everything parsed is kept
-in `profile.extras.dreamchatbox` (the full normalised config) and merged back on serialize.
+Format reference: `.references/notes/dreamchatbox-format.md` (v1.5.8). Files: `config.json`,
+`profiles/<name>.json` (same object minus the 19 `APP_WIDE_KEYS`, plus `plugin_<id>: bool` flags at
+the end since v1.5.7) and the single-file export `<name>.dcbprofile.json` (v1.5.7+, _Options ›
+General › Profiles › Export / Import_). Everything parsed is kept in `profile.extras.dreamchatbox`
+as `{ config, profile }` and merged back on serialize:
+
+- `config`: the full normalised config (unknown keys included, `plugin_<id>` booleans removed).
+- `profile`: `{ plugins: {id: on/off}, pluginSettings: {id: {...}} }` – the plugin part of a
+  profile (`core/profiles.py:702-712,749-760`). A pre-v1.5.7 flat config in `extras` is still read.
+
+## Files
+
+| Read (any of)                                                         | Written (all three)                                                                                                                                                             |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config.json` (preferred: it alone carries the app-wide keys)         | `<name>.dcbprofile.json` – `{"format": "osc-dreamchatbox-profile", "version": 1, "name", "profile": <profile file>, "plugins": {id: settings}}`; imports in the app in one step |
+| `<name>.dcbprofile.json` (recognised by `format`, not by its name)    | `config.json` – for hand-copying; the only file with OSC target, theme, `interval_sec`                                                                                          |
+| `profiles/<name>.json` (name from the path; `plugin_<id>` flags kept) | `profiles/<name>.json` – `config` minus `APP_WIDE_KEYS` and `plugin_*`, then the flags sorted                                                                                   |
+
+An export carries no app-wide keys, so parsing one alone yields default OSC/interval values (info
+`profile-export`); a profile that switches plugins on is reported with `plugin-state`. The
+serializer names a nameless profile `Default` (what a fresh v1.5.7 install creates) and adds one
+`profile-export` info with the import path. Plugin settings are opaque: they are carried, never
+interpreted.
 
 ## Model field ↔ Dream key
 
@@ -39,43 +59,51 @@ in `profile.extras.dreamchatbox` (the full normalised config) and merged back on
 Dream tokens are case-insensitive and `{anything}`-shaped; literal `\n` (two characters) is a line
 break. Style markers `{sup}…{/sup}`, `{super/"x"}` and `_"x"_` are stripped to plain text.
 
-| Canonical                               | Dream (built-in)                                                                                | Aliases accepted on import                                                |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `{status}`                              | `{text}`                                                                                        | `{text_N}`, `{text_tX}`, `{text_tX_N}`, `{text_templateX}`, `{text_tplX}` |
-| `{afk_duration}`                        | `{afk_time}`                                                                                    |                                                                           |
-| `{artist}` `{title}` `{player}`         | same                                                                                            | `song`, `song_title`, `songtitle` → title                                 |
-| `{position}/{duration}`                 | `{time}`                                                                                        | `{position}`/`{time_status}`, `{length}`/`{time_end}` individually        |
-| `{progress_bar}`                        | `{bar}`                                                                                         | `songbar`                                                                 |
-| `{lyrics}`                              | `{lyrics}`                                                                                      | `lyric`, `songtext`, `liedtext`; `{lyrics_prefix}` → literal prefix       |
-| `{cpu_name/usage/temp/power}` `{gpu_…}` | same                                                                                            | `*_temperature`, `*_watt(s)`, `*_w`, `cpupower`, `gpupower`               |
-| `{ram_used}/{ram_total}`                | `{ram_usage}`                                                                                   | `ram`; `{ram_type}` → literal `hw_ram_type`                               |
-| `{ram_usage}` (percent)                 | `{ram_pct}`                                                                                     |                                                                           |
-| `{vram_used}/{vram_total}`              | `{vram_usage}`                                                                                  | `vram`                                                                    |
-| `{vram_usage}` (percent)                | `{vram_pct}`                                                                                    |                                                                           |
-| `{speech_text}` / `{translation}`       | `{text_input}` / `{text_output}`                                                                | `chat_*`, `stt_*`, `ttt_*` pairs and their aliases (`spoken`, `typed`, …) |
-| `{time}` (inside the box)               | `{box_clock}`                                                                                   |                                                                           |
-| — (literal)                             | `{icon_sound}` → `🎵`, `{icon_flame}` → `🔥`, `{temp_icon}` → removed, `{media_idle}` → removed |                                                                           |
+| Canonical                                 | Dream (built-in)                                                                                | Aliases accepted on import                                                |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `{status}`                                | `{text}`                                                                                        | `{text_N}`, `{text_tX}`, `{text_tX_N}`, `{text_templateX}`, `{text_tplX}` |
+| `{afk_duration}`                          | `{afk_time}`                                                                                    |                                                                           |
+| `{artist}` `{title}` `{album}` `{player}` | same                                                                                            | `song`, `song_title`, `songtitle` → title; `{album}` filled since v1.5.8  |
+| `{position}/{duration}`                   | `{time}`                                                                                        | `{position}`/`{time_status}`, `{length}`/`{time_end}` individually        |
+| `{progress_bar}`                          | `{bar}`                                                                                         | `songbar`                                                                 |
+| `{remaining}` / `{progress_percent}`      | same (v1.5.8; empty when the player reports no length)                                          |                                                                           |
+| `{lyrics}`                                | `{lyrics}`                                                                                      | `lyric`, `songtext`, `liedtext`; `{lyrics_prefix}` → literal prefix       |
+| `{cpu_name/usage/temp/power}` `{gpu_…}`   | same                                                                                            | `*_temperature`, `*_watt(s)`, `*_w`, `cpupower`, `gpupower`               |
+| `{ram_used}/{ram_total}`                  | `{ram_usage}`                                                                                   | `ram`; `{ram_type}` → literal `hw_ram_type`                               |
+| `{ram_usage}` (percent)                   | `{ram_pct}`                                                                                     |                                                                           |
+| `{vram_used}/{vram_total}`                | `{vram_usage}`                                                                                  | `vram`                                                                    |
+| `{vram_usage}` (percent)                  | `{vram_pct}`                                                                                    |                                                                           |
+| `{speech_text}` / `{translation}`         | `{text_input}` / `{text_output}`                                                                | `chat_*`, `stt_*`, `ttt_*` pairs and their aliases (`spoken`, `typed`, …) |
+| `{time}` (inside the box)                 | `{box_clock}`                                                                                   |                                                                           |
+| — (literal)                               | `{icon_sound}` → `🎵`, `{icon_flame}` → `🔥`, `{temp_icon}` → removed, `{media_idle}` → removed |                                                                           |
 
 Plugin tokens (also accepted with the `<plugin>_` prefix). Export emits them and adds one
 `plugin-required` info per plugin.
 
-| Canonical                                                                          | Dream plugin token                                                                                                                                                                               | Plugin         |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
-| `{vrc_player_count}`                                                               | `{player_in_world}` (`players`, `player_count`, …)                                                                                                                                               | world_stats    |
-| `{vrc_world}`                                                                      | `{group_world}` (`world`, `world_name`, …)                                                                                                                                                       | world_stats    |
-| `{vrc_instance_type}`                                                              | `{instance_type}` (`instance`)                                                                                                                                                                   | world_stats    |
-| `{time}` / `{date}`                                                                | `{realtime}` (`clock`, `time_now`, `pctime`) / `{realdate}`                                                                                                                                      | world_stats    |
-| `{fps}`, `{vr_fps}`                                                                | `{fps}` (`fps_raw`; `{gg-fps}` of GG Stats on import)                                                                                                                                            | world_stats    |
-| `{hmd_battery}`                                                                    | `{hmd_battery}` (`hmd_battery_raw`)                                                                                                                                                              | world_stats    |
-| `L {left_controller_battery} R {right_controller_battery}`                         | `{controller_battery}`                                                                                                                                                                           | world_stats    |
-| `{tracker_lowest_battery}`, `{tracker_average_battery}`                            | `{tracker_battery}`                                                                                                                                                                              | world_stats    |
-| `{ram_used}` `{ram_total}` `{vram_used}` `{vram_total}` (standalone)               | `{hw_ram_used}` `{hw_ram_total}` `{hw_vram_used}` `{hw_vram_total}`                                                                                                                              | vrcosc_modules |
-| `{net_down}` / `{net_up}`                                                          | `{hw_net_rx}` / `{hw_net_tx}` (`{hw_net}` → both)                                                                                                                                                | vrcosc_modules |
-| `{window_title}` `{window_app}` `{device_mode}`                                    | `{hw_window}` `{hw_process}` `{hw_vr_mode}` (`xr_vr`, `xr_mode` on import)                                                                                                                       | vrcosc_modules |
-| `{play_icon}` / `{volume}`                                                         | `{md_status}` / `{md_volume}` (import also `md_title`, `md_artist`, `md_player`, `md_position`, `md_duration`, `md_progress`, `md_media`, `hw_cpu*`, `hw_gpu*`, `hw_ram*`, `hw_vram*`, `hw_fps`) | vrcosc_modules |
-| `{twitch_channel}` `{twitch_viewers}` `{twitch_title}` (`{twitch_game}` on export) | `{s_name}` `{s_viewer}` `{s_status}`                                                                                                                                                             | stream_stats   |
-| `{discord_channel}`                                                                | `{sm_channel}` (import also `sm_discord`, `sm_guild`)                                                                                                                                            | social_media   |
-| `{tiktok_host}`                                                                    | `{sm_tiktok}`                                                                                                                                                                                    | social_media   |
+| Canonical                                                                                                              | Dream plugin token                                                                                                                                                                               | Plugin         |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
+| `{vrc_player_count}`                                                                                                   | `{player_in_world}` (`players`, `player_count`, …)                                                                                                                                               | world_stats    |
+| `{vrc_world}`                                                                                                          | `{group_world}` (`world`, `world_name`, …)                                                                                                                                                       | world_stats    |
+| `{vrc_instance_type}`                                                                                                  | `{instance_type}` (`instance`)                                                                                                                                                                   | world_stats    |
+| `{time}` / `{date}`                                                                                                    | `{realtime}` (`clock`, `time_now`, `pctime`) / `{realdate}` – the clock moved from world_stats ≤1.6 to life_stats in catalogue v1.1.8                                                            | life_stats     |
+| `{timezone}` `{timer}` `{file_text}` (import also `file_text_2/3`)                                                     | same                                                                                                                                                                                             | life_stats     |
+| `{weather_temp}` `{weather_feels_like}` `{weather_condition}` `{weather_emoji}` `{weather_humidity}` `{weather_wind}`  | same; import `{weather}` → `{weather_emoji} {weather_temp}`                                                                                                                                      | life_stats     |
+| `{heartrate}` `{heartrate_avg}` `{heartrate_min}` `{heartrate_max}` `{heartrate_trend}`                                | same (Pulsoid / HypeRate)                                                                                                                                                                        | life_stats     |
+| `{vrc_region}` `{vrc_instance_capacity}` `{vrc_master}` `{tracker_lowest_name}`                                        | same (world_stats 1.7.0)                                                                                                                                                                         | world_stats    |
+| `{fps}`, `{vr_fps}`                                                                                                    | `{fps}` (`fps_raw`; `{gg-fps}` of GG Stats on import)                                                                                                                                            | world_stats    |
+| `{hmd_battery}`                                                                                                        | `{hmd_battery}` (`hmd_battery_raw`, `hmd_battery_icon`, `hmd_battery_bar` on import)                                                                                                             | world_stats    |
+| `L {left_controller_battery} R {right_controller_battery}`                                                             | `{controller_battery}`                                                                                                                                                                           | world_stats    |
+| `{tracker_lowest_battery}`, `{tracker_average_battery}`                                                                | `{tracker_battery}`                                                                                                                                                                              | world_stats    |
+| `{ram_used}` `{ram_total}` `{vram_used}` `{vram_total}` (standalone)                                                   | `{hw_ram_used}` `{hw_ram_total}` `{hw_vram_used}` `{hw_vram_total}`                                                                                                                              | vrcosc_modules |
+| `{net_down}` / `{net_up}`                                                                                              | `{hw_net_rx}` / `{hw_net_tx}` (`{hw_net}` → both)                                                                                                                                                | vrcosc_modules |
+| `{net_max_down}` `{net_max_up}` `{net_total_down}` `{net_total_up}` `{net_utilization}`                                | same (vrcosc_modules 2.0.0)                                                                                                                                                                      | vrcosc_modules |
+| `{window_title}` `{window_app}` `{device_mode}`                                                                        | `{hw_window}` `{hw_process}` `{hw_vr_mode}` (`xr_vr`, `xr_mode` on import)                                                                                                                       | vrcosc_modules |
+| `{play_icon}` / `{volume}`                                                                                             | `{md_status}` / `{md_volume}` (import also `md_title`, `md_artist`, `md_player`, `md_position`, `md_duration`, `md_progress`, `md_media`, `hw_cpu*`, `hw_gpu*`, `hw_ram*`, `hw_vram*`, `hw_fps`) | vrcosc_modules |
+| `{twitch_channel}` `{twitch_viewers}` `{twitch_title}` (`{twitch_game}` on export)                                     | `{s_name}` `{s_viewer}` `{s_status}`                                                                                                                                                             | stream_stats   |
+| `{twitch_live}` `{twitch_followers}`                                                                                   | same (stream_stats 1.2.0)                                                                                                                                                                        | stream_stats   |
+| `{discord_channel}`                                                                                                    | `{sm_channel}` (import also `sm_discord`, `sm_guild`)                                                                                                                                            | social_media   |
+| `{tiktok_host}`                                                                                                        | `{tiktok_host}` (import also `sm_tiktok`)                                                                                                                                                        | social_media   |
+| `{tiktok_followers}` `{tiktok_likes}` `{tiktok_viewers}` `{discord_count}` `{discord_speaking}` `{discord_mute_state}` | same (social_media 1.2.0)                                                                                                                                                                        | social_media   |
 
 ## Known losses
 
@@ -87,11 +115,14 @@ Dream → model (all reported as diagnostics):
 - All-in-one rotation (slots 2..n, `aio_rotate_sec`, `aio_custom_sec`) → only slot 1 enabled; advanced-mode node graphs untouched in extras.
 - `box_align`, `box_clock_format`, the live clock → prefix/suffix are static text with `{time}`.
 - Second GPU (`hw_gpu2*`), `{gpu2_*}`, `{vram2_*}`, two-way/chat tokens without a canonical name (`{twoway_*}`, `{box_start}`, `{box_stop}`, `{box_text}`), plugin tokens not in the table → kept as literal text with a warning.
-- Speech-to-text, translation, Textbox presets, themes, OSC input, plugins state: not modelled, round-trip via extras only.
+- Speech-to-text, translation, Textbox presets, themes, OSC input: not modelled, round-trip via extras only.
+- Plugin on/off flags and per-profile plugin settings (`plugin_<id>`, `profiles/plugins/<name>.json`, export `plugins`): carried in `extras.dreamchatbox.profile`, never interpreted. `profile_plugins_asked` / `profile_save_on_exit` are app-wide and stay in `config`.
+- `{realday}`, `{realtime_alt}`, `{world_time}`, `{vr_time}`, `{frametime}`, `{fps_source}`, `{s_chat}`, `{sm_social}`, `{sm_spotify}`, `{sm_instagram}` and the other plugin tokens not in the table → literal text with a warning.
 
 Model → Dream:
 
-- No provider (dropped with `unsupported-feature`): `album`, `remaining`, `progress_percent`, `timezone`, all `weather_*`, all `heartrate*`, `vrc_instance_capacity`, `vrc_region`, `vrc_master`, `tracker_lowest_name`, `vr_target_hz`, `vr_reprojection`, `vr_dropped_frames`, `net_max_*`, `net_total_*`, `net_utilization`, `twitch_live`, `twitch_followers`, `tiktok_viewers/likes/followers`, `discord_count/speaking/mute_state`, `soundpad_*`, `voicemod_*`, `timer`, `file_text`. A segment whose placeholders are all unsupported is dropped whole.
+- No provider (dropped with `unsupported-feature`): `vr_target_hz`, `vr_reprojection`, `vr_dropped_frames`, `soundpad_sound`, `voicemod_voice`, `voicemod_sound`. A segment whose placeholders are all unsupported is dropped whole.
+- `file_text_2`/`file_text_3` collapse onto `{file_text}` on import; `{weather}` becomes two tokens.
 - Segments other than status/media/lyrics/hardware(/time) force All-in-one mode; the Custom Box is then not drawn around the line.
 - `visibility` (desktop/VR), `favorite`, `transient` media display, Fahrenheit, media paused templates with placeholders, non-newline separators, `output.prefix/suffix` that are not frame lines.
 - More than 20 statuses per group or more than 10 groups; cycle interval outside 10..3600 s (clamped).

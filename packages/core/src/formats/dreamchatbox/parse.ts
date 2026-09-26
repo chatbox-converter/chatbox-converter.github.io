@@ -20,6 +20,7 @@ import { ConfigParseError, DiagnosticCollector, type ConfigFile, type ParseResul
 import { frameFor, renderBoxLine } from './box';
 import { BAR_BASE_LENGTH, BAR_CUSTOM_STYLE, BAR_PRESETS } from './catalog';
 import { bool, fixedList, isStr, list, num, obj, str } from './defaults';
+import { isExportEnvelope, pickInputFile, readDreamInput, toExtras } from './export';
 import { normalizeConfig } from './normalize';
 import { dreamToCanonical, reportToCanonical, type DreamContext } from './tokens';
 
@@ -32,7 +33,10 @@ export function detectDream(files: readonly ConfigFile[]): number {
     }
     try {
       const json = parseJsonFile(file.content, file.path);
-      if (isJsonObject(json) && DETECT_KEYS.some((key) => key in json)) {
+      if (
+        isJsonObject(json) &&
+        (isExportEnvelope(json) || DETECT_KEYS.some((key) => key in json))
+      ) {
         return 1;
       }
     } catch {
@@ -50,16 +54,21 @@ interface ParseState {
 }
 
 export function parseDream(files: readonly ConfigFile[]): ParseResult {
-  const file = files.find((f) => f.path.toLowerCase().endsWith('.json')) ?? files[0];
+  const file = pickInputFile(files);
   if (file === undefined) {
-    throw new ConfigParseError('No DreamChatbox config.json was provided.');
+    throw new ConfigParseError('No DreamChatbox config.json or .dcbprofile.json was provided.');
   }
   const json = parseJsonFile(file.content, file.path);
   if (!isJsonObject(json)) {
     throw new ConfigParseError(`${file.path} does not contain a JSON object.`, file.path);
   }
-  const cfg = normalizeConfig(json);
+  const input = readDreamInput(json, file.path);
+  if (input === undefined) {
+    throw new ConfigParseError(`${file.path} is a profile export without a profile.`, file.path);
+  }
+  const cfg = normalizeConfig(input.stored);
   const collector = new DiagnosticCollector();
+  reportProfileFile(input, collector, file.path);
   const state: ParseState = {
     cfg,
     path: file.path,
@@ -73,7 +82,11 @@ export function parseDream(files: readonly ConfigFile[]): ParseResult {
   const { prefix, suffix } = parseBox(state);
   const profile: ChatboxProfile = {
     version: 1,
-    meta: { name: profileName(file.path, cfg), source: 'dreamchatbox', notes: [] },
+    meta: {
+      name: input.name !== '' ? input.name : str(cfg, 'profile_active'),
+      source: 'dreamchatbox',
+      notes: [],
+    },
     statuses,
     statusCycle,
     afk: parseAfk(state),
@@ -87,14 +100,35 @@ export function parseDream(files: readonly ConfigFile[]): ParseResult {
     },
     osc: { host: str(cfg, 'osc_ip'), port: num(cfg, 'osc_port') },
     segments: bool(cfg, 'aio_active') ? parseAioSegments(state) : parseAppSegments(state),
-    extras: { dreamchatbox: cfg },
+    extras: { dreamchatbox: toExtras({ config: cfg, profile: input.meta }) },
   };
   return { profile, diagnostics: collector.all() };
 }
 
-function profileName(path: string, cfg: JsonObject): string {
-  const match = /(?:^|\/)profiles\/([^/]+)\.json$/i.exec(path);
-  return match?.[1] ?? str(cfg, 'profile_active');
+/** What a v1.5.7+ profile carries besides settings: plugin switches and their settings. */
+function reportProfileFile(
+  input: ReturnType<typeof readDreamInput>,
+  collector: DiagnosticCollector,
+  path: string,
+): void {
+  if (input === undefined) {
+    return;
+  }
+  if (input.envelope) {
+    collector.info(
+      'profile-export',
+      `Read the DreamChatbox profile export “${input.name}”; the OSC target and theme are not part of it and keep their defaults.`,
+      path,
+    );
+  }
+  const on = Object.keys(input.meta.plugins).filter((pid) => input.meta.plugins[pid] === true);
+  if (on.length > 0) {
+    collector.info(
+      'plugin-state',
+      `The profile switches on the plugins ${on.join(', ')}; their on/off state and settings are kept in extras only.`,
+      path,
+    );
+  }
 }
 
 function convert(state: ParseState, template: string, key: string): string {

@@ -66,7 +66,7 @@ describe('missingIn', () => {
 
 describe('summarize', () => {
   it('counts coverage buckets and formats the line', () => {
-    const rows = [byName('artist'), byName('soundpad_sound'), byName('timer')];
+    const rows = [byName('artist'), byName('soundpad_sound'), byName('voicemod_sound')];
     const summary = summarize(rows, 90);
     expect(summary.shown).toBe(3);
     expect(summary.allThree).toBe(1);

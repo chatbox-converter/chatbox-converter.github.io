@@ -1,6 +1,8 @@
 # OSC-DreamChatbox — persisted configuration format reference
 
-Source: `.references/dreamchatbox` at commit `f453c74` (v1.5.6, 2026-09-26). All
+Source: `.references/dreamchatbox` at commit `6102816` (v1.5.8, 2026-09-26; previously
+`f453c74` = v1.5.6 — v1.5.7 added plugins-in-profiles, the *Default* profile, save on exit
+and the single-file profile export, v1.5.8 added store tags and three MediaPlay placeholders). All
 `file:line` citations are relative to that repo root. This document is meant to be
 sufficient for writing a TypeScript parser/serializer without re-reading the Python.
 
@@ -14,7 +16,9 @@ sufficient for writing a TypeScript parser/serializer without re-reading the Pyt
 | Main config | `<cfg>/config.json` | same | JSON, `indent=2`, **ASCII-escaped** (`json.dumps` default `ensure_ascii=True`), UTF-8 | `ui/config_mixin.py:981-991`, `core/constants.py:47` |
 | Legacy config (pre v1.1, read-only migration source) | `~/.config/osc-dreamchatbox/settings.json` | `%APPDATA%\osc-dreamchatbox\settings.json` | JSON | `core/constants.py:48`, `core/osinfo.py:62-63,113` |
 | Corrupt-config backup | `<cfg>/config.json.bak` (or `settings.json.bak`) | same | copy of the unparseable file | `ui/config_mixin.py:940-962` |
-| Profiles | `<cfg>/profiles/<name>.json` | same | JSON `indent=2`, ASCII-escaped | `core/profiles.py:33,95-105` |
+| Profiles | `<cfg>/profiles/<name>.json` | same | JSON `indent=2`, ASCII-escaped; since v1.5.7 ends with `plugin_<id>: bool` keys | `core/profiles.py:42,715-733` |
+| Profile plugin settings (v1.5.7) | `<cfg>/profiles/plugins/<name>.json` | same | JSON `indent=2`, **`ensure_ascii=False`**, `{plugin id: settings}` | `core/profiles.py:736-760` |
+| Profile export (v1.5.7) | anywhere, default `~/<name>.dcbprofile.json` | same | JSON `indent=2`, `ensure_ascii=False`, envelope (§7) | `core/profiles.py:803-820`, `ui/pages/profiles_panel.py:330-350` |
 | Plugins | `<cfg>/plugins/<id>/plugin.json` (manifest, read-only) + `main.py` | same | JSON | `core/plugins.py:4-10,228` |
 | Plugin state | `<cfg>/plugins/<id>/configs/config.json` | same | JSON `indent=2`, **`ensure_ascii=False`** | `core/plugins.py:277,287,1197-1222` |
 | Plugin data dir | `<cfg>/plugins/<id>/configs/` (doubles as `api.data_dir`) | same | any | `core/constants.py:59-61` |
@@ -268,7 +272,9 @@ the active set. The Two-way page can write a `"Conversation"` set
 | `theme_background` | string | `""` | file name inside `<cfg>/backgrounds` | 385 |
 | `theme_opacity` | float | 0.82 | 0.25..1.0 | 386, 690-694 |
 | `debug` | bool | false | | 503 |
-| `profile_active` | string | `""` | profile name, `""` = none | 505 |
+| `profile_active` | string | `""` | profile name, `""` = none; since v1.5.7 a fresh install gets `"Default"` (`profiles_panel.py:294-310`) | 507 |
+| `profile_save_on_exit` (v1.5.7) | bool | true | *Options › General › Profiles*: save the active profile in `closeEvent` | `config_mixin.py:240`, `profiles.py:52` |
+| `profile_plugins_asked` (v1.5.7) | object | *(absent until first popup)* | `{profile name or "": [plugin ids]}` — plugins already asked "save into profile?"; app-wide, not in defaults dict | `profiles.py:61`, `profiles_panel.py:445-472` |
 
 ### 2.9 Custom Box (Custom Box card / `ui/pages/custom_box.py`)
 
@@ -344,6 +350,9 @@ Values built in `AppsPageMixin._template_values` (`ui/pages/apps_page.py:3649-37
 | `{text_1}`…`{text_20}` | slot N of the active template | `status_active` |
 | `{text_tX}`, `{text_tX_N}` (also `text_templateX`, `text_tplX`) | rotating text / slot N of template X (1-10) | always (`:3584-3640`) |
 | `{artist}`, `{title}` | title hard-cut to `media_title_max` | `media_active` + show flags |
+| `{album}` (v1.5.8) | album from MPRIS `xesam:album` / Windows `album_title`; empty when the player has none (`apps_page.py:4083`) | media |
+| `{remaining}` (v1.5.8) | time left, `ft(length - position)`; empty without a length (`:4084-4085`) | media |
+| `{progress_percent}` (v1.5.8) | `round(pos/len*100)%` e.g. `34%`; empty without a length (`:4086-4088`) | media |
 | `{time}` | `pos/len` e.g. `1:18/3:47` (or `pos` only if no length) | `media_show_time` |
 | `{position}` / `{time_status}` | position | media |
 | `{length}` / `{time_end}` | length | media |
@@ -479,11 +488,29 @@ Truthiness = non-empty string; `"1"` is the canonical true.
 
 * File: `<cfg>/profiles/<name>.json`; name cleaned of `\ / : * ? " < > |` and control
   chars, stripped of leading/trailing dots, max 40 chars (`profiles.py:47-58`).
-* Content: **the full normalised config minus `APP_WIDE_KEYS`** (`:37-48`):
-  `profile_active, osc_ip, osc_port, oscquery_enabled, send_to_vrchat, osc_input_enabled,
-  osc_input_port, hotkey_input_enabled, osc_ext_ip, osc_ext_port, osc_instant_send,
-  interval_sec, theme, theme_colors, theme_background, theme_opacity, debug`.
-  Plugin state is **not** in a profile.
+* Content: **the full normalised config minus `APP_WIDE_KEYS`** (`:63-73`, **19 keys since
+  v1.5.7**): `profile_active, profile_plugins_asked, profile_save_on_exit, osc_ip, osc_port,
+  oscquery_enabled, send_to_vrchat, osc_input_enabled, osc_input_port, hotkey_input_enabled,
+  osc_ext_ip, osc_ext_port, osc_instant_send, interval_sec, theme, theme_colors,
+  theme_background, theme_opacity, debug` — minus any key starting with `plugin_`
+  (`profile_part`, `:659-663`).
+* **Plugins in profiles (v1.5.7)**: `save_profile(name, cfg, plugins={id: bool})` appends
+  `plugin_<id>: true/false` **sorted, at the end of the file** (`:715-733`; test
+  `tests/test_profile_plugins.py:41-48`). `plugin_flags(stored)` reads back only **boolean**
+  `plugin_*` values, id lower-cased (`:702-712`); a profile without such keys leaves plugins
+  alone. `merge_for_load` drops all `plugin_` keys, so they never reach `config.json`
+  (`:229-235`). The flags are rebuilt from the installed plugins on every save
+  (`profiles_panel.py:_write_profile`, `manager.profile_state()` = `plugins.py:1758-1770`).
+* Per-profile plugin settings: `profiles/plugins/<name>.json` = `{plugin id: <plugin
+  configs/config.json minus "enabled" and "chat">}` (`PROFILE_SKIP_KEYS`, `plugins.py:1756`);
+  read with `read_plugin_settings` (non-dict entries dropped, broken file ⇒ `{}`, `:749-760`).
+  Applied on switch via `manager.apply_profile(flags, settings)`; plugins listed `true` but not
+  installed are offered from the store (`profiles_panel.py:_offer_profile_plugins`).
+* Rename/delete move/remove the settings file too (`:277-299`).
+* **Default profile** (v1.5.7): `DEFAULT_NAME = "Default"` (`:48`); when no profile exists the
+  live settings are saved as *Default* and activated (`profiles_panel.py:294-310`).
+* **Save on exit**: `profile_save_on_exit` (default true) writes the active profile + plugin
+  settings in `closeEvent` (`profiles_panel.py:312-323`).
 * Switch (`profiles_panel.py:342-393`): live cfg saved into the currently active profile,
   new profile read, `merge_for_load` (profile keys + current app-wide keys), then the
   result goes through `load_config(raw)` (all migrations apply), `profile_active` set.
@@ -518,6 +545,8 @@ removed (see §8 example).
 | `unity` | string | `""` | http(s) only |
 | `enabled` | bool | true | initial default only |
 | `is_linux` / `is_windows` | bool | true | |
+| `headless` (v1.5.7) | bool | true | `false` ⇒ not loaded in `--headless` mode (`plugins.py:1641-1649`); lenient `_truthy` |
+| `tags` (v1.5.8) | string[] | `[]` | store search/filter; `parse_tags` (`plugins.py:606-622`): lower-cased, `#` stripped, ≤8 tags of ≤24 chars, comma string accepted |
 | `template` | string | `"{<id>}"` | default custom string |
 | `placeholders` | `{key: description}` | `{}` | UI hint |
 | `global_placeholders` | string[] | `[]` | unprefixed names |
@@ -566,7 +595,7 @@ Types: `text bool int slider choice path emoji label` (values), `action` (no val
 `KNOWN_CONFIG_KEYS` (`:328-330`) also lists `"line"` etc. Written `ensure_ascii=False`.
 
 ### 5.3 Store catalogue (`config/plugins.json`)
-`{"_comment": …, "version": "1.1.2", "self_url": "https://raw.githubusercontent.com/yakuda-stack/OSC-DreamChatbox/main/config/plugins.json", "sources": ["https://github.com/yakuda-stack/Dream-Chatbox-Plugins/tree/main/plugins/world_stats", …]}`.
+`{"_comment": …, "version": "1.1.8", "self_url": "https://raw.githubusercontent.com/yakuda-stack/OSC-DreamChatbox/main/config/plugins.json", "sources": ["https://github.com/yakuda-stack/Dream-Chatbox-Plugins/tree/main/plugins/world_stats", …]}`.
 User additions: `<cfg>/plugins_sources.json` with the same `sources` list (items may be
 `{"url": …, "ref": …}`).
 
@@ -598,18 +627,75 @@ User additions: `<cfg>/plugins_sources.json` with the same `sources` list (items
 
 ## 7. Import / export / backup
 
-There is **no user-facing import/export** of the main config. The only related
-mechanisms: (a) corrupt config copied to `config.json.bak` (`config_mixin.py:940-962`);
-(b) legacy `settings.json` read once (`:519-521`); (c) profiles as described in §4;
-(d) plugin `configs/` folder preserved across zip re-install via `__configs_backup__`
-(`core/plugins.py:2032`); (e) theme background images imported by copy into
-`<cfg>/backgrounds` (`core/theming.py:283-284`).
+### 7.1 Profile export / import (v1.5.7, `core/profiles.py:802-859`, `ui/pages/profiles_panel.py:330-411`)
+
+*Options › General › Profiles* has **📤 Export active** and **📥 Import**. There is still no
+export of the whole `config.json`; the unit is one profile.
+
+* **File name**: `<name>.dcbprofile.json` (`EXPORT_SUFFIX`, `:57`); the save dialog defaults to
+  `~/<name>.dcbprofile.json` with filter `DreamChatbox profile (*.json)`. Export first saves
+  the live settings into the active profile (`_save_active_profile`), so the file equals the
+  files on disk.
+* **Shape** (`export_profile`, `:803-820`; `json.dumps(indent=2, ensure_ascii=False)`, atomic):
+
+  ```json
+  {
+    "format": "osc-dreamchatbox-profile",
+    "version": 1,
+    "name": "Gaming",
+    "profile": { "...every non-app-wide config key...": 0, "plugin_afk": false, "plugin_oscleash": true },
+    "plugins": { "oscleash": { "anchor": "aio", "order": 0, "line": true, "custom": false,
+                               "template": "", "options": {}, "layout": [] } }
+  }
+  ```
+
+  * `format` = `EXPORT_FORMAT` (`:55`), `version` = `EXPORT_VERSION` = 1 (`:56`).
+  * `name` = `clean_name(name)`.
+  * `profile` = `read_profile(name)` **as stored**: the profile file including the sorted
+    `plugin_<id>` booleans at the end; **none of the 19 `APP_WIDE_KEYS`** (no OSC target, no
+    theme, no `interval_sec`, no `profile_*`).
+  * `plugins` = `read_plugin_settings(name)` = the `profiles/plugins/<name>.json` object
+    (`{}` when there is none). Per plugin: its `configs/config.json` **minus `enabled` and
+    `chat`** (`PROFILE_SKIP_KEYS`), unknown keys included. Custom Boxes, themes, backgrounds
+    and the store cache are **not** bundled (Custom Box settings are ordinary `box_*` keys and
+    therefore already inside `profile`; themes are app-wide).
+* **Read back** (`read_export`, `:823-848`):
+  * File must be a JSON object, else `ValueError("not a profile file")`.
+  * `format == "osc-dreamchatbox-profile"` ⇒ `profile` must be a dict (else error),
+    `plugins` non-dict ⇒ `{}`, name = `clean_name(data["name"])` or the file stem (with
+    `.dcbprofile.json` / `.json` stripped). **`version` is not checked.**
+  * Any other `format` value ⇒ `ValueError("unknown file format …")`.
+  * No `format` key ⇒ a **plain profile file** (e.g. copied from `profiles/`): the object is the
+    profile, name = file stem, plugins `{}`.
+* **Import** (`import_profile`, `:851-859`; UI `on_profile_import`, `profiles_panel.py:352-411`):
+  * `save_profile(name, profile, plugins=plugin_flags(profile))` — i.e. `profile_part()` drops
+    app-wide keys and `plugin_*` keys, then the boolean flags are re-appended. **An import never
+    changes the OSC target or theme.** No normalisation happens at import time; the full
+    `load_config` migration runs when the profile is switched to.
+  * `save_plugin_settings(name, {lower-cased id: dict entries})` (non-dict values dropped).
+  * UI: empty name ⇒ `"Imported"`; existing name ⇒ *Replace* / *Import with another name*
+    (`"<name> (imported)"` suggested) / Cancel; afterwards "Switch to it now?". Replacing the
+    active profile detaches it first so the live settings do not overwrite the import.
+  * Switching to the imported profile applies `plugin_flags` (`_load_profile_plugins`); plugins
+    switched on but not installed are looked up in the store and offered for install; the
+    saved settings are applied after install (`_ask_profile_plugins`).
+  * Terminal mode (`core/headless.py:497-503`) only logs missing plugins.
+* Tests: `tests/test_profile_plugins.py:162-201` (round trip, plain file, unknown format,
+  OSC port never imported).
+
+### 7.2 Other mechanisms (unchanged)
+
+(a) corrupt config copied to `config.json.bak` (`config_mixin.py:940-962`); (b) legacy
+`settings.json` read once (`:519-521`); (c) profiles as described in §4; (d) plugin `configs/`
+folder preserved across zip re-install via `__configs_backup__` (`core/plugins.py`);
+(e) theme background images imported by copy into `<cfg>/backgrounds`
+(`core/theming.py:283-284`).
 
 ---
 
 ## 8. Literal examples
 
-### 8.1 Default `config.json` skeleton (v1.5.6, non-first-run, abbreviated arrays)
+### 8.1 Default `config.json` skeleton (v1.5.8, non-first-run, abbreviated arrays)
 ```json
 {
   "status_text": "",
@@ -632,7 +718,7 @@ mechanisms: (a) corrupt config copied to `config.json.bak` (`config_mixin.py:940
   "media_show_lyrics": false, "media_lyrics_local": false,
   "media_lyrics_sources": ["lrclib", "lyricsplus", "betterlyrics"],
   "media_lyrics_dir": "/home/user/.config/OSC-DreamChatbox/lyrics",
-  "media_lyrics_prefix_on": true, "media_lyrics_prefix": "♪", "media_lyrics_max": 144,
+  "media_lyrics_prefix_on": true, "media_lyrics_prefix": "♪", "profile_save_on_exit": true, "media_lyrics_max": 144,
   "media_show_bar": true, "oscquery_enabled": true, "media_bar_style": 2, "media_bar_size": 100,
   "media_time_pos": "line",
   "media_bar_custom": {"prefix": "[", "filled": "█", "empty": "░", "knob": "", "suffix": "]"},
@@ -704,6 +790,15 @@ file is in this order, with any unknown/legacy keys appended where `update()` pu
 * Plugin layout written (`tests/test_plugin_layout.py:164-169`):
   `config.json["layout"] == ["widget", "chatbox", "settings"]`.
 * Plugin manifest minimal: `{"id": "demo", "name": "Demo"}` (`tests/test_plugin_manifest.py:31-35`).
+* Profile with plugins (`tests/test_profile_plugins.py:41-48`): `save_profile("Gaming",
+  {"aio_active": True, "plugin_stale": True}, plugins={"oscleash": True, "afk": False})` writes
+  keys in the order `["aio_active", "plugin_afk", "plugin_oscleash"]` (the stale flag is dropped).
+* Export round trip (`:162-179`): `{"media_active": True, "plugin_afk": True}` +
+  `{"afk": {"options": {"speed": 3}}}` → `Gaming.dcbprofile.json` → imported elsewhere gives
+  the same profile dict and plugin settings; plain `Music.json` ⇒ `("Music", {...}, {})`.
+* Media placeholders (`tests/test_media_custom_mode.py`, v1.5.8): `{album} {remaining}
+  {progress_percent}` render `Neon Hours`, `2:29`, `34%` for position 78 / length 227 and empty
+  strings (separators tidied away) when `length == 0` or no album.
 
 ---
 
@@ -736,8 +831,10 @@ file is in this order, with any unknown/legacy keys appended where `update()` pu
 12. `hw_gpu2_select == hw_gpu_select` → second is cleared; GPU ids are backend strings.
 13. `chat_anchor` is shared by Chat-Line, Two-way-Line and (as default) plugin anchoring;
     plugin anchor/order live in each plugin's own config.json, not in config.json.
-14. Profiles omit exactly the 17 `APP_WIDE_KEYS`; on load the running app-wide values are
-    re-injected and the full normaliser runs, so a profile file may be partial/old.
+14. Profiles omit exactly the 19 `APP_WIDE_KEYS` (17 before v1.5.7) and every `plugin_*` key
+    except the boolean flags they append themselves; on load the running app-wide values are
+    re-injected and the full normaliser runs, so a profile file may be partial/old. A
+    `.dcbprofile.json` is `{format, version, name, profile, plugins}` around that same object.
 15. `stt_block_except` is a **sorted, de-duplicated** list of strings including
     `plugin:<id>`; `stt_block_saved` is transient bookkeeping (usually `[]`).
 16. `defaults.get(key, X)` fallbacks in the normaliser never fire (the defaults dict already

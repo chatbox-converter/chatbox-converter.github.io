@@ -99,7 +99,21 @@ all: `anchor "aio"`, `line true`, `custom false`, `order 1000` (`core/plugins.py
 | **vr_autostart** ("VR Autostart" 1.3.0, api 2, enabled false) | `🚀 {vr_autostart_rule} · {vr_autostart_count} running` | prefixed: `state` running/armed/off, `rule`, `count`, `targets`. Line only when `show_line`. | `arm_on_start` true, `stop_on_exit` true, `restart_crashed` false, `poll_secs` 2, `show_line` false, `icon` 🚀, `armed_text` "autostart armed", `show_off` false, `off_text` "autostart off", `panel` false | `…/plugins/vr_autostart/plugin.json` |
 | **example_template** (template 1.4.0; not a shipped plugin) | `{example_template_mood} {example_template_count}` | `mood`, `count`, `ticking` | demo of every setting type: `enabled_demo` bool, `name` text "hello", `mood` choice, `amount` int 5, `level` slider 40, `icon` emoji ✨, `folder` path, `ping` action, group `advanced` (`tick_count`, nested `deep_text`, `reset`) | `…/template/example_template/plugin.json` |
 
-Store catalogue (`config/plugins.json` in DreamChatbox) lists the yakuda plugins by GitHub tree URL (`notes/dreamchatbox-format.md` §5.3);
+### Catalogue v1.1.8 addendum (Dream-Chatbox-Plugins `955549a`, 2026-09-26)
+
+Manifests now carry `"tags": [...]` (store search, v1.5.8) and may carry `"headless": false` (v1.5.7);
+none of the shipped plugins sets `headless`. Version bumps and **new placeholders** since the table above:
+
+| Plugin | Version | New / moved placeholders (all **G**) | Notes |
+|---|---|---|---|
+| **life_stats** ("Life Stats" 1.0.0, tags clock/weather/heart rate/countdown/files) — **new** | 1.0.0 | `realtime`, `realdate`, `realday`, `realtime_alt`, `timezone` (clock, **moved here from world_stats**; settings copied on first start), `timer` (countdown to a time or Start/Stop timer), `weather` (emoji + temp), `weather_temp`, `weather_feels_like`, `weather_condition`, `weather_emoji`, `weather_humidity`, `weather_wind` (Open-Meteo, no key), `heartrate`, `heartrate_avg`, `heartrate_min`, `heartrate_max`, `heartrate_trend` (Pulsoid token / HypeRate id+key), `file_text`, `file_text_2`, `file_text_3` | Template `{realtime} {timer} {weather} {heartrate}`. Names follow the converter's canonical vocabulary (README). |
+| **world_stats** | 1.6.0 → 1.7.0 | + `vrc_region` (EU/US-W/US-E/JP), `vrc_instance_capacity`, `vrc_master` (icon while instance master), `tracker_lowest_name`; − the clock group (`realtime`, `realdate`, `realday`, `realtime_alt` now in life_stats; a hint setting points there) | Template `{vrc_master} {player_in_world} {group_world} \n {fps} {hmd_battery}`; new `capacity.py`. |
+| **vrcosc_modules** ("Linux Extras (from VRCOSC)") | 1.1.0 → 2.0.0 | + `net_max_down`, `net_max_up`, `net_total_down`, `net_total_up`, `net_utilization`; − `hw_temp_max`, `hw_temp_sys` | Template `{hw_ram} {hw_net} \n {xr_vr} {vx_friends}`. Store name changed to *Linux Extras*. |
+| **stream_stats** | 1.1.0 → 1.2.0 | + `twitch_live`, `twitch_followers` | |
+| **social_media** | 1.1.0 → 1.2.0 | + `discord_count`, `discord_speaking`, `discord_mute_state`, `tiktok_host`, `tiktok_followers`, `tiktok_likes`, `tiktok_viewers` | `summary` key dropped from the manifest. |
+| oscleash 2.2.1, osc_paramprofiles 1.2.0, vr_autostart 1.3.0, example_template 1.4.0 | unchanged | tags only | |
+
+Store catalogue (`config/plugins.json` in DreamChatbox, now `"version": "1.1.8"`, + `life_stats`, + `vrcosc_modules`) lists the yakuda plugins by GitHub tree URL (`notes/dreamchatbox-format.md` §5.3);
 the GG plugin is distributed as a ZIP.
 
 ---

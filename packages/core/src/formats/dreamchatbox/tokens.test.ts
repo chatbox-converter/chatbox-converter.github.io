@@ -27,9 +27,14 @@ describe('token catalog', () => {
       const back = DREAM_TO_CANONICAL[target.token];
       expect(back, `${name} → ${target.token}`).toBeDefined();
     }
-    expect(PLACEHOLDER_NAMES.filter((n) => CANONICAL_TO_DREAM[n] === undefined)).toContain(
-      'heartrate',
-    );
+    expect(PLACEHOLDER_NAMES.filter((n) => CANONICAL_TO_DREAM[n] === undefined)).toEqual([
+      'vr_target_hz',
+      'vr_reprojection',
+      'vr_dropped_frames',
+      'soundpad_sound',
+      'voicemod_voice',
+      'voicemod_sound',
+    ]);
   });
 
   it('has the documented alias table', () => {
@@ -59,8 +64,18 @@ describe('token catalog', () => {
       ['{player_in_world} {players}', '{vrc_player_count} {vrc_player_count}'],
       ['{world} {group_world}', '{vrc_world} {vrc_world}'],
       ['{instance}', '{vrc_instance_type}'],
-      ['{realtime} {clock}', '{time} {time}'],
+      ['{realtime} {clock} {life_stats_realtime}', '{time} {time} {time}'],
       ['{realdate}', '{date}'],
+      ['{album} {remaining} {progress_percent}', '{album} {remaining} {progress_percent}'],
+      [
+        '{weather} {heartrate_trend} {file_text_2}',
+        '{weather_emoji} {weather_temp} {heartrate_trend} {file_text}',
+      ],
+      ['{vrc_region} {vrc_master} {hmd_battery_bar}', '{vrc_region} {vrc_master} {hmd_battery}'],
+      [
+        '{net_utilization} {twitch_live} {discord_count}',
+        '{net_utilization} {twitch_live} {discord_count}',
+      ],
       ['{fps} {world_stats_fps}', '{fps} {fps}'],
       ['{hmd_battery}', '{hmd_battery}'],
       ['{controller_battery}', 'L {left_controller_battery} R {right_controller_battery}'],
@@ -94,13 +109,22 @@ describe('token catalog', () => {
 
   it('converts canonical templates to Dream tokens and reports plugins/losses', () => {
     const result = canonicalToDream(
-      '{status}\n{artist} - {title} {position}/{duration} {ram_used}/{ram_total} {vram_used} {fps} {heartrate} {twitch_viewers}',
+      '{status}\n{artist} - {title} {position}/{duration} {ram_used}/{ram_total} {vram_used} {fps} {heartrate} {voicemod_voice} {twitch_viewers}',
     );
     expect(result.template).toBe(
-      '{text} \\n {artist} - {title} {time} {ram_usage} {hw_vram_used} {fps} {s_viewer}',
+      '{text} \\n {artist} - {title} {time} {ram_usage} {hw_vram_used} {fps} {heartrate} {s_viewer}',
     );
-    expect([...result.plugins]).toEqual(['vrcosc_modules', 'world_stats', 'stream_stats']);
-    expect(result.dropped).toEqual(['heartrate']);
+    expect([...result.plugins]).toEqual([
+      'vrcosc_modules',
+      'world_stats',
+      'life_stats',
+      'stream_stats',
+    ]);
+    expect(result.dropped).toEqual(['voicemod_voice']);
+    expect(canonicalToDream('{time} {date} {album}').template).toBe(
+      '{realtime} {realdate} {album}',
+    );
+    expect([...canonicalToDream('{time}').plugins]).toEqual(['life_stats']);
     expect(
       canonicalToDream('L {left_controller_battery} R {right_controller_battery}').template,
     ).toBe('{controller_battery}');
