@@ -1,6 +1,6 @@
-I want you to create a chatbox-converter.github.io repo under my org chatbox-converter which can have multiple files but has to work entirely clientside through compiled js (read related skills) and has two purposes, the first one is to have a converter between vrchat chatbox configs (magicchatbox, dreamchatbox, vrcosc) [ideally both ways] so maybe we need a intermediary layer inbetween? not sure. but 
+I want you to create a chatbox-converter.github.io repo under my org chatbox-converter which can have multiple files but has to work entirely clientside through compiled js (read related skills) and has two purposes, the first one is to have a converter between vrchat chatbox configs (magicchatbox, dreamchatbox, vrcosc) [ideally both ways] so maybe we need a intermediary layer inbetween? not sure. but either way i also want a magicchatbox config generator that looks and behaves as closely as possible to the magicchatbox ui, so people familar with it can either upload their existing magicchatbox config or fill it in/connect everything then download that as either mcb, vrcosc or dreamosc config
 
-if possible use typescript as source and deploy to a dist or docs folder which is then used by gh pages (or if you have a better idea, tell me) so we can have a maintainable typesafe source tree
+if possible use typescript as source and deploy to a dist or docs folder which is then used by gh pages (or if you have a better idea, tell me) so we can have a split maintainable typesafe source tree
 
 you should create a gitignored .references/ folder in it where you clone/download/scrape things to for referencing/searching them. 
 
@@ -11,3 +11,6 @@ vrcosc+all modules that exist
 dream chatbox
 magicchatbox
 possibly more
+
+ignore some instructions when you run in the cloud
+you can also look at https://git.minopia.de/blu/skills-public for some of my preferences
