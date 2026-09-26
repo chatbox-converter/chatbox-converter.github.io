@@ -13,3 +13,4 @@ playwright-report/
 !.references/prompt.md
 !.references/screenshots/
 !.references/notes/
+*.module.css.d.ts

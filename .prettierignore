@@ -4,3 +4,4 @@ dist/
 pnpm-lock.yaml
 **/fixtures/**/*.json
 docs/
+*.module.css.d.ts

@@ -8,7 +8,14 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', 'docs/**', '**/node_modules/**', '.references/**', '**/coverage/**'],
+    ignores: [
+      '**/dist/**',
+      'docs/**',
+      '**/*.module.css.d.ts',
+      '**/node_modules/**',
+      '.references/**',
+      '**/coverage/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

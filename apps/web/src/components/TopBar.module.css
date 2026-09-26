@@ -1,0 +1,139 @@
+.bar {
+  display: flex;
+  align-items: stretch;
+  height: 54px;
+  padding-left: 14px;
+  background: var(--surface-primary);
+  color: var(--text-bright);
+  flex: none;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-right: 28px;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.brandTop {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-light-purple);
+}
+
+.brandName {
+  font-family: var(--font-secondary);
+  font-weight: 700;
+  font-size: var(--fs-subheading);
+}
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.tab {
+  position: relative;
+  padding: 0 24px;
+  border: 0;
+  background: transparent;
+  color: var(--text-light-purple);
+  font-family: var(--font-secondary);
+  font-size: var(--fs-title);
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+}
+
+.tab:hover {
+  color: var(--text-bright);
+  background: rgb(255 255 255 / 4%);
+}
+
+.active {
+  color: var(--text-bright);
+  background: rgb(255 255 255 / 7%);
+}
+
+.active::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--accent-ramp);
+  box-shadow: 0 0 12px rgb(185 107 255 / 70%);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.iconLink {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  color: var(--text-light-purple);
+}
+
+.iconLink:hover {
+  color: var(--text-bright);
+}
+
+.sendBox {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  min-width: 150px;
+  padding: 0 16px;
+  background: var(--surface-dark-purple);
+}
+
+.sendLabel {
+  font-size: var(--fs-caption);
+  color: var(--text-light-purple);
+}
+
+.sendRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modeText {
+  font-family: var(--font-secondary);
+  font-weight: 700;
+  font-size: var(--fs-compact);
+  letter-spacing: 0.08em;
+  background: var(--accent-ramp);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (max-width: 900px) {
+  .brand {
+    margin-right: 10px;
+  }
+
+  .tab {
+    padding: 0 12px;
+    font-size: var(--fs-subheading);
+  }
+
+  .sendBox {
+    min-width: 0;
+    padding: 0 10px;
+  }
+
+  .sendLabel {
+    display: none;
+  }
+}

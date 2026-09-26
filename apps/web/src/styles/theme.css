@@ -1,0 +1,157 @@
+/* Design tokens lifted from MagicChatbox UI/Theme.xaml (0.9.226). */
+@import '@fontsource-variable/albert-sans';
+@import '@fontsource-variable/comfortaa';
+
+:root {
+  color-scheme: dark;
+
+  --font-primary: 'Albert Sans Variable', 'Albert Sans', system-ui, sans-serif;
+  --font-secondary: 'Comfortaa Variable', 'Comfortaa', var(--font-primary);
+
+  --fs-display: 27px;
+  --fs-title: 20px;
+  --fs-heading: 18px;
+  --fs-subheading: 16px;
+  --fs-body: 15px;
+  --fs-compact: 14px;
+  --fs-secondary: 13px;
+  --fs-caption: 12px;
+  --fs-fine: 11px;
+
+  /* surfaces */
+  --surface-dark: #240e54;
+  --surface-primary: #2d1265;
+  --surface-card: #3b3054;
+  --surface-card-dark: #3a2f54;
+  --surface-variant: #493f65;
+  --surface-mid-purple: #41375c;
+  --surface-dark-purple: #3b2075;
+  --surface-button-dark: #3a1f73;
+  --surface-button-panel: #483472;
+  --surface-gradient-start: #3a3053;
+  --surface-gradient-end: #40365b;
+  --surface-page: #2f2648;
+  --input-bg: #7b7195;
+  --tile-surface: linear-gradient(135deg, #4a3e85 0%, #3a2e6b 55%, #2c2252 100%);
+  --tile-icon-frame: rgb(169 140 255 / 15%);
+  --tile-icon-frame-border: rgb(195 169 255 / 20%);
+  --tile-panel-border: #3a1f73;
+
+  /* text */
+  --text-primary: #b9b5c1;
+  --text-label: #b3a3c4;
+  --text-muted: #a29bb5;
+  --text-secondary: #a498c7;
+  --text-subtle: #a39bb6;
+  --text-accent: #bdaee2;
+  --text-section-header: #bdaee2;
+  --text-light-purple: #d4cee2;
+  --text-soft-purple: #b5abc9;
+  --text-bright: #fdfbff;
+  --text-body-light: #e3dcf5;
+  --text-dim-label: #a29bb8;
+  --text-highlight-cyan: #7ed6ff;
+  --text-danger: #ff6b6b;
+  --text-chat-accent: #94ccbf;
+  --tile-description: #bcb1dd;
+
+  /* accents */
+  --accent-teal: #31b7b4;
+  --accent-deep-purple: #302573;
+  --accent-light-purple: #c3a9ff;
+  --accent-light-blue: #b0e6fc;
+  --accent-slate-blue: #483d8b;
+  --border-muted: #7d7397;
+  --border-accent-purple: #7169b7;
+  --button-highlight: #aea7ed;
+  --button-text: #9b90d1;
+  --accent-ramp: linear-gradient(90deg, #3fe0d2 0%, #6e9bff 35%, #b96bff 65%, #ff6fc7 100%);
+  --accent-ramp-soft: linear-gradient(90deg, #5fe6d8 0%, #a97bff 50%, #ff8ad2 100%);
+
+  /* switches */
+  --switch-track-off: #584b8c;
+  --switch-edge-off: #7a6bb5;
+  --switch-thumb-off: #e3dcf5;
+  --switch-thumb-on: #fdfbff;
+  --switch-edge-on: #cbb0ff;
+
+  /* status */
+  --status-success: #4caf50;
+  --status-warning: #ffc107;
+  --status-error: #e53935;
+  --status-warning-bg: rgb(255 193 7 / 20%);
+  --status-info-bg: rgb(169 140 255 / 16%);
+  --status-success-bg: rgb(76 175 80 / 16%);
+
+  --brand-discord: #5865f2;
+  --brand-spotify: #1db954;
+  --brand-pulsoid: #05b4a8;
+
+  --radius-card: 10px;
+  --radius-control: 6px;
+  --radius-pill: 999px;
+  --shadow-card: 0 6px 18px rgb(0 0 0 / 28%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--surface-dark);
+  color: var(--text-body-light);
+  font-family: var(--font-primary);
+  font-size: var(--fs-body);
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--accent-light-purple);
+}
+
+::selection {
+  background: rgb(185 107 255 / 45%);
+}
+
+/* scrollbars, matching the thin purple thumb of the app */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(192 178 240 / 56%) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(192 178 240 / 56%);
+  border-radius: 999px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
