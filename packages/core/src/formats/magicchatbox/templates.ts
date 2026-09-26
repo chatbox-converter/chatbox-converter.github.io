@@ -304,22 +304,24 @@ function trackerBattery(ctx: ParseContext): Reconstructed {
   };
 }
 
+/** NetworkStatsSettings flags: key, default, label, canonical placeholder (same keys as `LAYOUT_FLAGS`). */
+export const NETWORK_ROWS: readonly (readonly [string, boolean, string, string])[] = [
+  ['ShowCurrentDown', true, 'Down', 'net_down'],
+  ['ShowCurrentUp', false, 'Up', 'net_up'],
+  ['ShowMaxDown', false, 'Max Down', 'net_max_down'],
+  ['ShowMaxUp', false, 'Max Up', 'net_max_up'],
+  ['ShowTotalDown', false, 'Total Down', 'net_total_down'],
+  ['ShowTotalUp', false, 'Total Up', 'net_total_up'],
+  ['ShowNetworkUtilization', true, 'Network Utilization', 'net_utilization'],
+];
+
 function network(ctx: ParseContext): Reconstructed {
   const ns = reader(ctx, FILES.network);
   const styled = ns.bool('StyledCharacters', true);
   const label = (text: string): string => (styled ? superscript(text) : text);
-  const rows: readonly (readonly [string, boolean, string, string])[] = [
-    ['ShowCurrentDown', true, 'Down', 'net_down'],
-    ['ShowCurrentUp', false, 'Up', 'net_up'],
-    ['ShowMaxDown', false, 'Max Down', 'net_max_down'],
-    ['ShowMaxUp', false, 'Max Up', 'net_max_up'],
-    ['ShowTotalDown', false, 'Total Down', 'net_total_down'],
-    ['ShowTotalUp', false, 'Total Up', 'net_total_up'],
-    ['ShowNetworkUtilization', true, 'Network Utilization', 'net_utilization'],
-  ];
-  const parts = rows
-    .filter(([key, fallback]) => ns.bool(key, fallback))
-    .map(([, , text, token]) => `${label(text)} {${token}}`);
+  const parts = NETWORK_ROWS.filter(([key, fallback]) => ns.bool(key, fallback)).map(
+    ([, , text, token]) => `${label(text)} {${token}}`,
+  );
   return { template: parts.join(' | ') };
 }
 

@@ -2,6 +2,7 @@ import type { PreviewMode } from '@chatbox-converter/core';
 import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
+import { CatalogPage } from '@/pages/CatalogPage';
 import { ConvertPage } from '@/pages/ConvertPage';
 import { IntegrationsPage } from '@/pages/IntegrationsPage';
 import { OptionsPage } from '@/pages/OptionsPage';
@@ -50,6 +51,7 @@ export function App(): React.JSX.Element {
             {page === 'status' ? <StatusPage /> : null}
             {page === 'options' ? <OptionsPage /> : null}
             {page === 'convert' ? <ConvertPage /> : null}
+            {page === 'catalog' ? <CatalogPage /> : null}
           </main>
           <Sidebar previewMode={previewMode} />
         </div>

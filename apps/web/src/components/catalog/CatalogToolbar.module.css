@@ -1,0 +1,54 @@
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px 4px 6px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search {
+  flex: 1 1 260px;
+  min-width: 200px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #4a3580;
+  border-radius: var(--radius-control);
+  background: #2c2148;
+  color: var(--text-bright);
+  font-size: var(--fs-compact);
+}
+
+.search::placeholder {
+  color: var(--text-muted);
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--accent-light-purple);
+  box-shadow: 0 0 0 2px rgb(195 169 255 / 25%);
+}
+
+.apps {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.summary {
+  margin: 2px 0 0;
+  min-height: 18px;
+  font-size: var(--fs-secondary);
+  color: var(--text-soft-purple);
+}

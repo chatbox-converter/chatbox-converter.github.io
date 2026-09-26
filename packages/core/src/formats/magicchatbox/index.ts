@@ -8,6 +8,12 @@ import { serializeMagicchatbox } from './serialize';
 export { EXTRAS_KEY, normalizeSortOrder, type MagicchatboxExtras } from './parse';
 export { hashMsgId, STATUS_ID_PREFIX } from './statuses';
 export {
+  CANONICAL_TO_MCB,
+  INTEGRATION_TITLES as MAGICCHATBOX_INTEGRATION_TITLES,
+  LAYOUT_FLAGS as MAGICCHATBOX_LAYOUT_FLAGS,
+  type McbProvider,
+} from './canonical';
+export {
   FILES as MAGICCHATBOX_FILES,
   SORT_KEYS as MAGICCHATBOX_SORT_KEYS,
   TIMEZONES as MAGICCHATBOX_TIMEZONES,

@@ -16,6 +16,7 @@ import {
   timezoneEnumFor,
   type SortKey,
 } from './catalog';
+import { layoutFlagsFor } from './canonical';
 import { COMPONENTS, componentItemDefaults } from './defaults';
 import { escapeNewlines, mergeDefaults, Reader, setKey } from './files';
 
@@ -67,6 +68,13 @@ function uses(segment: Segment, ...names: PlaceholderName[]): boolean {
   return names.some((name) => used.includes(name));
 }
 
+/** Boolean layout flags (`LAYOUT_FLAGS`): each is "the template uses its placeholder". */
+function writeLayoutFlags(sortKey: SortKey, segment: Segment, ctx: SerializeContext): void {
+  for (const entry of layoutFlagsFor(sortKey)) {
+    setKey(fileOf(ctx, entry.file), entry.key, uses(segment, entry.placeholder));
+  }
+}
+
 /** Literal text before the first placeholder. */
 function leadingText(template: string): string {
   const first = parseTemplate(template)[0];
@@ -107,7 +115,7 @@ function writeStatus(segment: Segment, ctx: SerializeContext): void {
 function writeWindow(segment: Segment, ctx: SerializeContext): void {
   const wa = fileOf(ctx, FILES.window);
   const focus = textBetween(segment.template, 'device_mode', 'window_title');
-  setKey(wa, 'ShowFocusedApp', uses(segment, 'window_title'));
+  writeLayoutFlags('Window', segment, ctx);
   if (focus !== undefined && focus.trim() !== '') {
     setKey(wa, 'DesktopFocusTitle', focus.trim());
   }
@@ -124,9 +132,7 @@ function writeWindow(segment: Segment, ctx: SerializeContext): void {
 function writeSpotify(segment: Segment, ctx: SerializeContext): void {
   const sp = fileOf(ctx, FILES.spotify);
   setKey(sp, 'OutputTemplate', unmapTokens(segment, SPOTIFY_TOKENS, ctx, FILES.spotify));
-  setKey(sp, 'ShowAlbum', uses(segment, 'album'));
-  setKey(sp, 'ShowDevice', uses(segment, 'player'));
-  setKey(sp, 'ShowVolume', uses(segment, 'volume'));
+  writeLayoutFlags('Spotify', segment, ctx);
   const bar = uses(segment, 'progress_bar');
   const numbers = uses(segment, 'position', 'duration', 'remaining');
   const percent = uses(segment, 'progress_percent');
@@ -230,10 +236,7 @@ function writeHeartRate(segment: Segment, ctx: SerializeContext): void {
   }
   setKey(hr, 'MagicHeartIconPrefix', /[❤♥💖💗💙💚💛💜]/u.test(segment.template));
   setKey(hr, 'ShowBPMSuffix', /ᵇᵖᵐ|bpm/iu.test(segment.template));
-  setKey(hr, 'ShowHeartRateTrendIndicator', uses(segment, 'heartrate_trend'));
-  setKey(hr, 'ShowAverageHeartRate', uses(segment, 'heartrate_avg'));
-  setKey(hr, 'ShowMaximumHeartRate', uses(segment, 'heartrate_max'));
-  setKey(hr, 'ShowMinimumHeartRate', uses(segment, 'heartrate_min'));
+  writeLayoutFlags('HeartRate', segment, ctx);
   setKey(
     hr,
     'PulsoidStatsEnabled',
@@ -314,11 +317,7 @@ export function prepareComponentItems(previous: unknown, now: string): JsonObjec
 }
 
 function writeVrPerformance(segment: Segment, ctx: SerializeContext): void {
-  const vp = fileOf(ctx, FILES.vrPerformance);
-  setKey(vp, 'ShowFps', uses(segment, 'vr_fps'));
-  setKey(vp, 'ShowTargetHz', uses(segment, 'vr_target_hz'));
-  setKey(vp, 'ShowReprojection', uses(segment, 'vr_reprojection'));
-  setKey(vp, 'ShowDroppedFrames', uses(segment, 'vr_dropped_frames'));
+  writeLayoutFlags('VrPerformance', segment, ctx);
 }
 
 function writeTrackerBattery(segment: Segment, ctx: SerializeContext): void {
@@ -341,14 +340,7 @@ function writeTrackerBattery(segment: Segment, ctx: SerializeContext): void {
 }
 
 function writeNetwork(segment: Segment, ctx: SerializeContext): void {
-  const ns = fileOf(ctx, FILES.network);
-  setKey(ns, 'ShowCurrentDown', uses(segment, 'net_down'));
-  setKey(ns, 'ShowCurrentUp', uses(segment, 'net_up'));
-  setKey(ns, 'ShowMaxDown', uses(segment, 'net_max_down'));
-  setKey(ns, 'ShowMaxUp', uses(segment, 'net_max_up'));
-  setKey(ns, 'ShowTotalDown', uses(segment, 'net_total_down'));
-  setKey(ns, 'ShowTotalUp', uses(segment, 'net_total_up'));
-  setKey(ns, 'ShowNetworkUtilization', uses(segment, 'net_utilization'));
+  writeLayoutFlags('Network', segment, ctx);
 }
 
 function writeWeather(segment: Segment, ctx: SerializeContext): void {
@@ -359,11 +351,7 @@ function writeWeather(segment: Segment, ctx: SerializeContext): void {
     'WeatherTemplate',
     unmapTokens(segment, WEATHER_TOKENS, ctx, FILES.weather).slice(0, 144),
   );
-  setKey(ws, 'ShowWeatherCondition', uses(segment, 'weather_condition'));
-  setKey(ws, 'ShowWeatherEmoji', uses(segment, 'weather_emoji'));
-  setKey(ws, 'ShowWeatherFeelsLike', uses(segment, 'weather_feels_like'));
-  setKey(ws, 'ShowWeatherHumidity', uses(segment, 'weather_humidity'));
-  setKey(ws, 'ShowWeatherWind', uses(segment, 'weather_wind'));
+  writeLayoutFlags('Weather', segment, ctx);
   if (segment.options.kind !== 'weather') {
     return;
   }
@@ -394,7 +382,7 @@ function writeWeather(segment: Segment, ctx: SerializeContext): void {
 function writeTime(segment: Segment, ctx: SerializeContext): void {
   const ts = fileOf(ctx, FILES.time);
   setKey(ts, 'PrefixTime', segment.template.trimStart().startsWith(MY_TIME_LABEL));
-  setKey(ts, 'TimeShowTimeZone', uses(segment, 'timezone'));
+  writeLayoutFlags('Time', segment, ctx);
   if (segment.options.kind !== 'time') {
     return;
   }

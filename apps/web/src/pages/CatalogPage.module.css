@@ -1,0 +1,79 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 18px;
+  min-width: 0;
+}
+
+.empty {
+  margin: 18px 18px 0 6px;
+  font-size: var(--fs-compact);
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 22px 18px 0 6px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  border-left: 2px solid #7b5bbb;
+  background: var(--surface-card-dark);
+}
+
+.legendList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-caption);
+  color: var(--text-light-purple);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentcolor;
+}
+
+.builtin {
+  background: var(--accent-light-purple);
+  color: var(--accent-light-purple);
+}
+
+.official {
+  background: var(--accent-teal);
+  color: var(--accent-teal);
+}
+
+.community {
+  background: linear-gradient(135deg, #ff6fc7, #b96bff);
+  color: #ff6fc7;
+}
+
+.plugin {
+  background: var(--accent-light-blue);
+  color: var(--accent-light-blue);
+}
+
+.integration {
+  background: #b9a6ee;
+  color: #b9a6ee;
+}
+
+.note {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-soft-purple);
+}

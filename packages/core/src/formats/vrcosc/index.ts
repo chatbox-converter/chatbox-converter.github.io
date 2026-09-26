@@ -6,6 +6,14 @@ import { parseVJson } from './vjson';
 
 export { MODULES, BUILT_IN_VARIABLES, CANONICAL_SOURCES, findModule } from './catalog';
 export type { VrcoscModule, VrcoscVariable, VrcoscState } from './catalog';
+export {
+  ALIASED_SOURCES,
+  ALIAS_NOTES,
+  PLAY_ICONS,
+  STATUS_BUILTIN_NOTE,
+  STATUS_BUILTIN_VARIABLE,
+  playIconNote,
+} from './aliases';
 export type { VrcoscExtras } from './parse';
 
 /**

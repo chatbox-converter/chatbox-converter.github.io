@@ -6,6 +6,7 @@ import {
   renderTemplate,
   type TemplateValues,
 } from '../../model/template';
+import { ALIASED_SOURCES, PLAY_ICONS, STATUS_BUILTIN_VARIABLE, type MediaState } from './aliases';
 import { MODULES, findModule, findVariable, sourcesFor, type VariableSource } from './catalog';
 import type { VrcVariable } from './document';
 import { bluscreamModuleId } from './modules-bluscream';
@@ -45,30 +46,9 @@ export interface CompileInput {
   readonly mediaState?: MediaState;
 }
 
-export type MediaState = 'playing' | 'paused' | 'stopped';
-
-/** `{play_icon}` has no official variable: it is a literal that differs per media state. */
-export const PLAY_ICONS: Readonly<Record<MediaState, string>> = {
-  playing: '▶',
-  paused: '⏸',
-  stopped: '⏹',
-};
+export type { MediaState } from './aliases';
 
 const LINUX_MEDIA_MODULE = bluscreamModuleId('linuxmediamodule');
-
-/**
- * Placeholders that reuse another placeholder's variable with different
- * options: the same DateTime with a date/offset format, the progress variable
- * without its visual bar, the speech result once VRCOSC has translated it.
- * Linux Media has real `playicon`/`progresspercent` variables, used when it
- * is the segment's media module.
- */
-const ALIASED_SOURCES: Partial<Record<PlaceholderName, PlaceholderName>> = {
-  date: 'time',
-  timezone: 'time',
-  progress_percent: 'progress_bar',
-  translation: 'speech_text',
-};
 
 export interface CompiledVariable extends VrcVariable {
   readonly placeholder: PlaceholderName;
@@ -308,7 +288,7 @@ function statusSource(input: CompileInput): ResolvedVariable {
     };
   }
   return {
-    source: { moduleId: null, variableId: 'text', official: true },
+    source: { moduleId: null, variableId: STATUS_BUILTIN_VARIABLE, official: true },
     options: { text: input.statusText },
   };
 }

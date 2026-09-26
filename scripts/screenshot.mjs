@@ -34,6 +34,7 @@ for (const [name, hash] of [
   ['status', '#/status'],
   ['options', '#/options'],
   ['convert', '#/convert'],
+  ['catalog', '#/catalog'],
 ]) {
   await page.goto(`http://localhost:4173/${hash}`);
   await page.waitForTimeout(400);

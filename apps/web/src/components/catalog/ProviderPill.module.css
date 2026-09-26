@@ -1,0 +1,74 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px 0 7px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: var(--radius-pill);
+  background: rgb(0 0 0 / 16%);
+  color: var(--text-light-purple);
+  font-size: var(--fs-caption);
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.link:hover {
+  border-color: #a97bff;
+  background: rgb(185 107 255 / 14%);
+  color: var(--text-bright);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 6px currentcolor;
+}
+
+.builtin {
+  background: var(--accent-light-purple);
+  color: var(--accent-light-purple);
+}
+
+.official {
+  background: var(--accent-teal);
+  color: var(--accent-teal);
+}
+
+.community {
+  background: linear-gradient(135deg, #ff6fc7, #b96bff);
+  color: #ff6fc7;
+}
+
+.plugin {
+  background: var(--accent-light-blue);
+  color: var(--accent-light-blue);
+}
+
+.integration {
+  background: #b9a6ee;
+  color: #b9a6ee;
+}
+
+.name {
+  color: var(--text-body-light);
+  font-weight: 600;
+}
+
+.detail {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--fs-fine);
+  color: var(--text-soft-purple);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.info {
+  font-size: var(--fs-caption);
+  color: var(--accent-light-blue);
+  cursor: help;
+}

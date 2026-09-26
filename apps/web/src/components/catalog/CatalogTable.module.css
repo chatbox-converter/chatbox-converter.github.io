@@ -1,0 +1,141 @@
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.scroller {
+  margin: 0 18px 0 6px;
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid rgb(255 255 255 / 6%);
+  background: var(--surface-card-dark);
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--fs-secondary);
+  table-layout: fixed;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 10px;
+  background: var(--surface-variant);
+  color: var(--text-light-purple);
+  font-family: var(--font-secondary);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+}
+
+.thPlaceholder {
+  width: 240px;
+}
+
+.thSample {
+  width: 150px;
+}
+
+.table td {
+  padding: 6px 10px;
+  vertical-align: top;
+  border-bottom: 1px solid rgb(255 255 255 / 4%);
+}
+
+.row:nth-child(even) td {
+  background: rgb(255 255 255 / 4%);
+}
+
+.row:hover td {
+  background: rgb(185 107 255 / 12%);
+}
+
+.gap td {
+  box-shadow: inset 3px 0 0 rgb(255 193 7 / 55%);
+}
+
+.gap td:not(:first-child) {
+  box-shadow: none;
+}
+
+.gap:not(:hover) td {
+  background-color: rgb(255 193 7 / 7%);
+}
+
+.gap:nth-child(even):not(:hover) td {
+  background-color: rgb(255 193 7 / 11%);
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: copy;
+}
+
+.copy:hover {
+  background: rgb(255 255 255 / 8%);
+}
+
+.copy:focus-visible {
+  outline: 2px solid var(--accent-light-purple);
+  outline-offset: 1px;
+}
+
+.token {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--fs-secondary);
+  color: var(--text-bright);
+  overflow-wrap: anywhere;
+}
+
+.label {
+  font-size: var(--fs-fine);
+  color: var(--text-soft-purple);
+}
+
+.copied .label {
+  color: var(--accent-teal);
+  font-weight: 600;
+}
+
+.sample {
+  display: inline-block;
+  max-width: 100%;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 22%);
+  color: var(--text-body-light);
+  font-size: var(--fs-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+.none {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
