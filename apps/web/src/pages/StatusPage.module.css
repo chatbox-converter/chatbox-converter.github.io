@@ -1,0 +1,39 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--surface-card);
+}
+
+.list {
+  margin: 0;
+  padding: 5px;
+  list-style: none;
+}
+
+.list:last-of-type {
+  flex: 1;
+}
+
+.empty {
+  flex: 1;
+  margin: 0;
+  padding: 5px 10px;
+  color: var(--text-muted);
+  font-size: var(--fs-secondary);
+}
+
+.messageBar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding-left: 16px;
+  border-top: 1px solid rgb(163 155 182 / 50%);
+  background: var(--surface-variant);
+  color: var(--text-label);
+  font-size: var(--fs-subheading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: none;
+}

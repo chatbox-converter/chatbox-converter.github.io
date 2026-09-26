@@ -1,0 +1,174 @@
+.card {
+  display: grid;
+  grid-template-columns: 35px auto minmax(0, 1fr) auto 90px 35px;
+  align-items: center;
+  height: 35px;
+  margin: 5px;
+  border: 1px solid #150c33;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #4a4070, #2c2448);
+  color: lightgray;
+  overflow: hidden;
+  list-style: none;
+  transition: border-color 0.12s ease;
+}
+
+.card:hover {
+  border-color: var(--border-accent-purple);
+}
+
+.selected {
+  background: linear-gradient(90deg, #5c5296, #3a3162);
+  border-color: var(--accent-light-purple);
+}
+
+.active {
+  color: #9ddaa8;
+}
+
+.activate,
+.delete,
+.edit,
+.fav,
+.cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.activate,
+.delete,
+.edit,
+.fav {
+  height: 35px;
+}
+
+.activate:focus-visible,
+.delete:focus-visible,
+.edit:focus-visible,
+.fav:focus-visible,
+.group:focus-visible,
+.editInput:focus-visible,
+.cancel:focus-visible {
+  outline: 2px solid var(--accent-light-purple);
+  outline-offset: -2px;
+}
+
+.activate {
+  width: 35px;
+  background: var(--surface-button-dark);
+  border-radius: 4px 0 0 4px;
+}
+
+.activated {
+  background: transparent;
+  border: 1.5px solid #b170c5;
+  border-left-width: 2px;
+}
+
+.activate img,
+.delete img,
+.edit img,
+.fav img {
+  display: block;
+  object-fit: contain;
+}
+
+.delete {
+  width: 30px;
+  background: #3f2970;
+}
+
+.delete:hover {
+  background: #6b0000;
+}
+
+.textCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0 6px 0 10px;
+}
+
+.text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-secondary);
+  font-size: var(--fs-subheading);
+  font-weight: 600;
+}
+
+.editInput {
+  flex: 1;
+  min-width: 0;
+  height: 27px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 22%);
+  color: var(--text-bright);
+  font-family: var(--font-secondary);
+  font-size: var(--fs-subheading);
+  font-weight: 500;
+  box-shadow: 0 0 6px rgb(126 214 255 / 60%);
+}
+
+.editInput:focus {
+  border-color: var(--text-highlight-cyan);
+}
+
+.cancel {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: #6b0000;
+  color: var(--text-bright);
+  font-size: var(--fs-caption);
+  line-height: 1;
+}
+
+.edit {
+  width: 25px;
+  background: #24134e;
+  border-radius: 4px 0 0 4px;
+}
+
+.edit:hover {
+  background: #321b68;
+}
+
+.editOn,
+.editOn:hover {
+  background: #9e82dd;
+}
+
+.group {
+  width: 90px;
+  height: 35px;
+  padding: 0 2px;
+  border: 0;
+  border-left: 2px solid rgb(0 0 0 / 25%);
+  border-right: 2px solid rgb(0 0 0 / 25%);
+  background: transparent;
+  color: var(--text-light-purple);
+  font-size: var(--fs-caption);
+  cursor: pointer;
+}
+
+.group option {
+  background: var(--surface-dark);
+}
+
+.fav {
+  width: 35px;
+  background: transparent;
+}
+
+.fav:hover img {
+  filter: brightness(1.3);
+}

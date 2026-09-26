@@ -1,0 +1,85 @@
+.composer {
+  --status-button-bg: #240e54;
+  --status-button-hover: #191551;
+  display: flex;
+  align-items: stretch;
+  margin: 10px;
+  flex: none;
+}
+
+.field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.input {
+  width: 100%;
+  min-height: 40px;
+  padding: 4px 58px 4px 10px;
+  border: 1px solid #5a4a90;
+  border-radius: 5px;
+  background: #3d3460;
+  color: var(--text-bright);
+  font-size: var(--fs-body);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus {
+  outline: none;
+  border-color: #9b7fdf;
+}
+
+.counter {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.counterVisible {
+  opacity: 1;
+}
+
+.near {
+  color: #ffd79a;
+}
+
+.over {
+  color: var(--text-danger);
+  font-weight: 600;
+}
+
+.create {
+  width: 75px;
+  margin-left: 8px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--status-button-bg);
+  color: var(--text-light-purple);
+  font-size: var(--fs-secondary);
+  cursor: pointer;
+}
+
+.create:hover:not(:disabled) {
+  background: var(--status-button-hover);
+  color: var(--text-bright);
+}
+
+.create:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.create:focus-visible,
+.input:focus-visible {
+  outline: 2px solid var(--accent-light-purple);
+  outline-offset: 1px;
+}
