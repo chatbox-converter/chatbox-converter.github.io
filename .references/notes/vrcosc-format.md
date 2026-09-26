@@ -32,8 +32,8 @@ Contents
 | `configuration/startup.json` | StartupManagerSerialiser | `Startup/Serialisation/StartupManagerSerialiser.cs:12-13` |
 | `configuration/packages.json` | PackageManagerSerialiser | `Packages/Serialisation/PackageManagerSerialiser.cs` |
 | `profiles/{profileGuid}/chatbox.json` | ChatBoxSerialiser (**the ChatBox config**) | `ChatBox/Serialisation/ChatBoxSerialiser.cs:17`, `Serialisation/ProfiledSerialiser.cs:12` |
-| `profiles/{profileGuid}/modules/{module.FullID}.json` | ModuleSerialiser (one per module, settings+parameters+enabled) | `Modules/Serialisation/ModuleSerialiser.cs:14-15` |
-| `profiles/{profileGuid}/persistence/{module.FullID}.json` | ModulePersistenceSerialiser (runtime state a module wants to keep) | `Modules/Serialisation/ModulePersistenceSerialiser.cs:12-13` |
+| `profiles/{profileGuid}/modules/{module.FullID}.json` | ModuleSerialiser (one per module, settings+parameters+enabled) | `Modules/Serialisation/ModuleSerialiser.cs:15-16` |
+| `profiles/{profileGuid}/persistence/{module.FullID}.json` | ModulePersistenceSerialiser (runtime state a module wants to keep) | `Modules/Serialisation/ModulePersistenceSerialiser.cs:13-14` |
 | `packages/remote/{packageId}/*.dll` | installed module packages; the folder name **is** the package id | `Modules/ModuleManager.cs:315-319` |
 | `packages/local/*.dll` | user-dropped local modules, package id `"local"` | `Modules/ModuleManager.cs:261-283` |
 | `logs/`, `runtime/whisper`, `runtime/openvr` | logs / downloaded runtimes | `Utils/Logger.cs:60`, `AppManager.cs:551` |
@@ -44,7 +44,7 @@ Contents
 
 `Serialiser<TReference, TSerialisable>` (`vrcosc/VRCOSC.App/Serialisation/Serialiser.cs`):
 
-* Writing: `JsonConvert.SerializeObject(data, Formatting.Indented)` → UTF-8 bytes **without BOM**, written atomically via a temp file (`Serialiser.cs:96-115`, `Utils/Storage.cs:189-191`). Indented = Newtonsoft default 2-space indentation, `\r\n`? — Newtonsoft uses `Environment.NewLine` (`\r\n` on Windows). Key order = C# declaration order, base-class fields first (so `"version"` is always the first key).
+* Writing: `JsonConvert.SerializeObject(data, Formatting.Indented)` → UTF-8 bytes **without BOM**, written atomically via a temp file (`Serialiser.cs:96-115`, `Utils/Storage.cs:189-191`). Indented = Newtonsoft default 2-space indentation with `Environment.NewLine` line breaks (`\r\n` on Windows). Key order = C# declaration order, base-class fields first (so `"version"` is always the first key).
 * Reading (`Serialiser.cs:117-153`): accepts UTF-16 LE with BOM (`FF FE`), UTF-16 LE without BOM (detected by decoding and checking for a leading `{`), otherwise UTF-8. Anything not starting with `{` is rejected as corrupt.
 * Versioning: every top-level document derives from `SerialisableVersion` which has `[JsonProperty("version")] int Version` (`Serialisation/SerialisableVersion.cs:8-12`). `SerialisationManager.Deserialise` first reads only `version`, picks the registered serialiser whose version equals it, otherwise `CorruptFile` (`Serialisation/SerialisationManager.cs:36-61`). **Every document type currently has exactly one serialiser registered with version 1.** A file without a matching `version` is treated as corrupt and (when `serialiseOnFail` is true and the file does not exist) the defaults are written out.
 * After deserialising from an override path (import) or an older version, the file is immediately re-serialised (`SerialisationManager.cs:63-72`).
@@ -94,25 +94,25 @@ SerialisableClipVariable                              SerialisableChatBox.cs:175
 
 ### 2.2 Semantics needed to serialise correctly
 
-**Clip layering / evaluation** (`ChatBoxManager.cs` `evaluateClips`, `Clip.cs` `Evaluate`): every send tick the clips are ordered by `layer` ascending and the first enabled clip whose `[start,end)` contains `CurrentSecond` and whose current state/event evaluates to text wins. Lower layer index = higher priority. Clips on the same layer must not overlap in time (enforced by the UI's droppable areas; not validated on load). `CurrentSecond = floor(elapsedSeconds) % length`.
+**Clip layering / evaluation** (`ChatBoxManager.cs:316-325` `evaluateClips`, `Clip.cs` `Evaluate`): every send tick the clips are ordered by `layer` ascending and the first enabled clip whose `[start,end)` contains `CurrentSecond` and whose current state/event evaluates to text wins. Lower layer index = higher priority. Clips on the same layer must not overlap in time (enforced by the UI's droppable areas; not validated on load). `CurrentSecond = floor(elapsedSeconds) % length`.
 
-**States** (`Clip.cs` `addStatesOfAddedModules`, `ClipState.cs:82-90`):
+**States** (`Clip.cs:302-318` `addStatesOfAddedModules`, `ClipState.cs:83-90`):
 
 * A clip with no linked modules has exactly one state, the built-in text state, serialised with `"states": null`.
 * When a module is linked, the built-in state is removed and, for every state reference the module registered, VRCOSC creates one `ClipState` whose `states` dictionary is `{ [moduleId]: stateId }`, **plus** compound states: for each existing state a clone with the new module's state added. So linking modules A (states a1,a2) and B (states b1) yields `{A:a1}`, `{A:a2}`, `{A:a1,B:b1}`, `{A:a2,B:b1}`, `{B:b1}`. Every combination that is possible at runtime exists in memory; only the ones the user changed are persisted.
-* A compound state is chosen at runtime only when the set of *running* linked modules equals the set of keys of the state and each module's current state matches (`Clip.cs` `calculateValidClipState`).
-* Defaults for a module state: `format` = the module's `DefaultFormat`, `show_typing` = module default (false unless noted), `use_minimal_background` = false, **`enabled` = false**, `variables` = the module's default variable list (`ClipState.cs:82-90`, `ClipElement.cs`). Because `enabled` defaults to `false`, any state the user turned on is non-default and therefore always written.
+* A compound state is chosen at runtime only when the set of *running* linked modules equals the set of keys of the state and each module's current state matches (`Clip.cs:226-245` `calculateValidClipState`).
+* Defaults for a module state: `format` = the module's `DefaultFormat`, `show_typing` = module default (false unless noted), `use_minimal_background` = false, **`enabled` = false**, `variables` = the module's default variable list (`ClipState.cs:83-90`, `ClipElement.cs`). Because `enabled` defaults to `false`, any state the user turned on is non-default and therefore always written.
 * Built-in text state defaults: `format` = "", `enabled` = false, no variables.
 * Load matching (`ChatBoxSerialiser.cs:43`): `states == null` → the built-in state; otherwise the in-memory state whose dictionary `SequenceEqual`s the file's dictionary. `SequenceEqual` on `Dictionary<string,string>` is **order-sensitive** (enumeration order = insertion order). VRCOSC inserts keys in the order modules appear in `linked_modules` (earlier-linked module first). A TS serialiser must emit compound-state keys in `linked_modules` order or the state silently fails to match and is dropped.
 * Unknown state (no match) → silently skipped during the real load (`ChatBoxSerialiser.cs:44`), but the validation pass fails first (see §8).
 
-**Events** (`ClipEvent.cs:64-73`): for each linked module every event reference gets a `ClipEvent`. Defaults: `format` = module `DefaultFormat`, `show_typing` = module default, `length` = module default (SDK default 5), `behaviour` = module default (SDK default `Override` = 0), `enabled` = false, variables = module defaults. Only non-default events are written (`IsDefault` also checks `length` and `behaviour`, `ClipEvent.cs:64`). On load an event is matched by `(module_id, event_id)`; no match → skipped.
+**Events** (`ClipEvent.cs:75-84`): for each linked module every event reference gets a `ClipEvent`. Defaults: `format` = module `DefaultFormat`, `show_typing` = module default, `length` = module default (SDK default 5), `behaviour` = module default (SDK default `Override` = 0), `enabled` = false, variables = module defaults. Only non-default events are written (`IsDefault` also checks `length` and `behaviour`, `ClipEvent.cs:69`). On load an event is matched by `(module_id, event_id)`; no match → skipped.
 
 **Variables inside a state/event** (`ChatBoxSerialiser.cs:53-73`): the `variables` array is authoritative — the in-memory list is cleared and rebuilt from the file in array order. Each entry is resolved via `ChatBoxManager.GetVariable(module_id, variable_id)`; unknown → silently dropped (array indices of following variables shift, which breaks `{n}` references). Each option key is matched against the variable class's `[ClipVariableOption("serialised_name")]` properties; unknown keys ignored; values converted with `TryConvertToTargetType`. Then `OnDeserialised()` runs.
 
 **`options` serialisation** (`SerialisableChatBox.cs:191-220`): written only if `!clipVariable.IsDefault()`, otherwise `{}`. When written, **all** option properties of the class (base + derived) are emitted, not just the changed ones. `DateTimeOffset` values are written as `UtcTicks` (long). Enum options are written as ints, `List<string>` as JSON arrays.
 
-**Text delivery**: `\n` in a format string is sent to VRChat as `\v` (`ChatBoxManager.cs` `convertSpecialCharacters`). If `use_minimal_background` is true the text is truncated to 142 chars and `"\u0003\u001f"` appended. VRChat's own limit is 144 chars.
+**Text delivery**: `\n` in a format string is sent to VRChat as `\v` (`ChatBoxManager.cs:368-376` `convertSpecialCharacters`). If `use_minimal_background` is true the text is truncated to 142 chars and `"\u0003\u001f"` appended. VRChat's own limit is 144 chars.
 
 ### 2.3 Clip variable classes and their options
 
@@ -128,7 +128,7 @@ Base options on every variable (`ChatBox/Clips/Variables/ClipVariable.cs:121-140
 | `join_string` | string | "" | appended between wrap-around when scrolling |
 | `only_scroll_when_truncated` | bool | false | |
 
-`IsDefault()` for the base = all of the above at default (`ClipVariable.cs:147-153`).
+`IsDefault()` for the base = all of the above at default (`ClipVariable.cs:147-153`); output post-processing is `GetFormattedValue()` (`ClipVariable.cs:157-234`).
 
 Per-class options (all classes in `ChatBox/Clips/Variables/Instances/`):
 
@@ -331,7 +331,7 @@ for (var i = 0; i < Variables.Count; i++)
 * Placeholders are `{0}`, `{1}`, … referring to the **position** of the variable in that state's/event's `variables` array. There are no named placeholders, no format specifiers inside the braces, no escaping of literal braces. A placeholder with no corresponding variable is left as literal text; a variable with no placeholder is simply not shown.
 * Replacement is a plain ordinal `string.Replace` done sequentially, so the output of variable 0 could in theory contain `{1}` and be replaced again.
 * Newlines are literal `\n` (JSON `"\n"`); they become `\v` on the wire.
-* Each variable value is post-processed by its options (truncate/scroll/case) before insertion (`ClipVariable.cs:156-230`).
+* Each variable value is post-processed by its options (truncate/scroll/case) before insertion (`ClipVariable.cs:157-234`).
 
 ---
 
@@ -350,9 +350,9 @@ Schema (`Modules/Serialisation/SerialisableModule.cs`):
 }
 ```
 
-* `enabled` — module enabled on the modules page (`SerialisableModule.cs:11`).
-* `settings` — only settings whose value is **not the default** are written (`SerialisableModule.cs:22`). On load a key that no longer exists or fails to deserialise is dropped and the file is rewritten (`ModuleSerialiser.cs:18-32`).
-* `parameters` — only parameters whose `enabled`/`parameter_name` differ from the registered defaults (`SerialisableModule.cs:23`). Key = parameter lookup id, `parameter_name` = the OSC address suffix after `/avatar/parameters/`.
+* `enabled` — module enabled on the modules page (`SerialisableModule.cs:16`).
+* `settings` — only settings whose value is **not the default** are written (`SerialisableModule.cs:34`). On load a key that no longer exists or fails to deserialise is dropped and the file is rewritten (`ModuleSerialiser.cs:18-32`).
+* `parameters` — only parameters whose `enabled`/`parameter_name` differ from the registered defaults (`SerialisableModule.cs:35`). Key = parameter lookup id, `parameter_name` = the OSC address suffix after `/avatar/parameters/`.
 
 ### 4.2 Setting value shapes (`SDK/Modules/Attributes/Settings/*.cs`)
 
@@ -371,7 +371,7 @@ Schema (`Modules/Serialisation/SerialisableModule.cs`):
 | `CreateQueryableParameterList` (553) | `QueryableParameterListModuleSetting` | `[{"name":"","type":0,"comparison":0,"bool_value":false,"int_value":0,"float_value":0.0}, ...]` (`SDK/Parameters/Queryable/QueryableParameter.cs:29-45`; `type`: 0 Bool 1 Int 2 Float; `comparison`: 0 Changed 1 EqualTo 2 NotEqualTo 3 GreaterThan 4 LessThan 5 GreaterThanOrEqualTo 6 LessThanOrEqualTo) | array |
 | `CreateCustomSetting` (457) | any `ModuleSetting` subclass, usually `ListModuleSetting<T>` | array of `T` objects serialised with `[JsonProperty]` names (see §6 per module) | array |
 
-List settings compare against their default list to decide "is default" (`ListModuleSetting.cs`), so an empty list with an empty default is omitted from the file.
+List settings compare against their default list to decide "is default" (`ListModuleSetting.cs:41`), so an empty list with an empty default is omitted from the file.
 
 ### 4.3 Module persistence `profiles/{guid}/persistence/{FullID}.json`
 
@@ -387,7 +387,7 @@ Properties tagged `[ModulePersistent("key")]` (`SDK/Modules/Attributes.cs:108-12
 
 ## 5. Global configuration files (brief)
 
-### `configuration/settings.json` (`Settings/Serialisation/SerialisableSettingsManager.cs`, defaults `Settings/SettingsManager.cs:47-85`)
+### `configuration/settings.json` (`Settings/Serialisation/SerialisableSettingsManager.cs`, defaults `Settings/SettingsManager.cs:51-87`)
 
 ```json
 { "version": 1,
@@ -523,7 +523,7 @@ Variables: `cpuname` string "CPU Name"; `cpuusage` int "CPU Usage (%)"; `cpupowe
 
 State `default` "Default" format `CPU: {0}% | GPU: {1}%\nRAM: {2}GB/{3}GB` vars [cpuusage, gpuusage, ramused, ramtotal]. No events.
 
-### 6.6 Heart-rate base (Pulsoid, HypeRate) — `vrcosc/VRCOSC.App/SDK/Modules/Heartrate/HeartrateModule.cs:20-47`
+### 6.6 Heart-rate base (Pulsoid, HypeRate) — `vrcosc/VRCOSC.App/SDK/Modules/Heartrate/HeartrateModule.cs:38-73`
 
 Shared settings: `smoothvalue` bool true; `smoothvaluelength` int 1000; `averageperiod` int 10000; `smoothaverage` bool true; `smoothaveragelength` int 1000; `normalisedlowerbound` int 0; `normalisedupperbound` int 240; `beatmode` bool false.
 
@@ -646,7 +646,7 @@ Setting `location` string "". Variables: `tempc` float "Temp C"; `tempf` float "
 
 * VRCOSC is a WPF app; module DLLs are loaded from `packages/remote/<package_id>/` and `packages/local/`. A config only makes sense on a machine where the referenced packages are installed and loaded — `ModuleManager.IsModuleLoaded(fullId)` checks the in-memory module list (`Modules/ModuleManager.cs:106`). Official modules must be installed from the package manager (source `VolcanicArts/VRCOSC-Modules`, `Packages/PackageManager.cs:50`).
 * On load (`ChatBoxManager.Deserialise`, `ChatBox/ChatBoxManager.cs:150-203`) a **validation pass** (`ChatBoxValidationSerialiser`) runs first over the same file. It sets `IsValid = false` and stops at the first of: a `linked_modules` entry that is not loaded; a `states` dictionary entry whose `(moduleId, stateId)` has no registered state reference; a state or event variable whose `(module_id, variable_id)` is unknown; an event whose `(module_id, event_id)` is unknown (`ChatBoxValidationSerialiser.cs:29-90`). Note it does **not** check unknown option keys, layer/time ranges, overlaps or the `version` beyond the manager's version match.
-* If validation fails during a **normal startup load**: an error dialog "ChatBox could not load all data... module not loading correctly or a missing config" is shown, `IsLoaded` stays false, the timeline stays empty and — importantly — nothing is re-serialised, so the file on disk is preserved until the module is installed again (`ChatBoxManager.cs:181-186`, `Serialise()` guard at `ChatBoxManager.cs:93-97`).
+* If validation fails during a **normal startup load**: an error dialog "ChatBox could not load all data... module not loading correctly or a missing config" is shown, `IsLoaded` stays false, the timeline stays empty and — importantly — nothing is re-serialised, so the file on disk is preserved until the module is installed again (`ChatBoxManager.cs:181-186`, `Serialise()` guard at `ChatBoxManager.cs:143-147`).
 * If validation fails during an **import**: a dialog "ChatBox could not import all data ... Press OK to import anyway" appears; OK re-runs `Deserialise(filePath, bypassValidation: true)` (`ChatBoxManager.cs:170-179`). In the forced load the real serialiser silently drops every unmatched state, event and variable (§2.2) and then writes the pruned result to `chatbox.json`, i.e. references to missing modules are lost permanently. `linked_modules` entries for missing modules are kept verbatim in the clip.
 * The validation serialiser is also a `ProfiledSerialiser` reading `chatbox.json`, so when there is no file at all the manager just writes an empty default (`SerialisationManager.cs:40-44`).
 
@@ -668,7 +668,7 @@ Setting `location` string "". Variables: `tempc` float "Temp C"; `tempf` float "
 12. **IDs are lower-case enum names with no separators** (`ontrackchange`, `hmd_battery`), module ids are `package.classname` lower-case (`volcanicarts.vrcosc.officialmodules.mediamodule`). Counter ids embed a GUID: `{guid}_value`, `{guid}_countchanged`.
 13. **Encoding**: write UTF-8 without BOM; accept UTF-8 and UTF-16 LE (with or without BOM) when reading. Non-ASCII in format strings (emoji, box-drawing chars) is written as raw UTF-8 characters by Newtonsoft, not `\uXXXX` escapes.
 14. **Newlines** in `format` are literal `\n`; do not convert to `\v` in the file (VRCOSC does that at send time). Minimal-background clips are cut to 142 chars; VRChat's hard limit is 144.
-15. **Timeline bounds**: `length` 1..240 s; `layer` 0..31; `0 <= start < end <= length`; clips on the same layer should not overlap; lower `layer` wins. None of this is validated on load, but out-of-range clips are pruned/clamped when the length changes (`Clip.cs` `ChatBoxLengthChange`).
+15. **Timeline bounds**: `length` 1..240 s; `layer` 0..31; `0 <= start < end <= length`; clips on the same layer should not overlap; lower `layer` wins. None of this is validated on load, but out-of-range clips are pruned/clamped when the length changes (`Clip.cs:94-107` `ChatBoxLengthChange`).
 16. **Progress/Timer variables are never "default"** (see §2.3), so VRCOSC always writes their options; and `visual_line_complete: ""` is rewritten to `visual_line` on load.
 17. **Unknown module in a config** does not crash the loader but the whole ChatBox refuses to load until the module is present; a forced import prunes the references. A converter targeting VRCOSC should therefore only emit references to modules the user actually has, and should prefer built-in `text` variables for static content.
 18. **Module settings files store only non-default keys**, keyed by lower-cased enum name, and `parameters` only for renamed/disabled parameters; both dictionaries can be entirely absent (`{}`) for an untouched module. Custom list-setting item objects use the `[JsonProperty]` names listed in §6 and `Observable<T>` fields are flattened to plain values.
