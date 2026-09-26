@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
 
-const root = '/home/user/chatbox-converter.github.io/docs';
+const root = process.env.SITE_ROOT ?? '/home/user/chatbox-converter.github.io/docs';
 const types = {
   '.html': 'text/html',
   '.js': 'text/javascript',

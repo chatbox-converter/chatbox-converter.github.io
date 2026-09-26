@@ -22,6 +22,15 @@ interface ExportResult {
   readonly files: readonly ConfigFile[];
 }
 
+const FILES_SHOWN = 3;
+
+function summarizeFiles(files: readonly string[]): string {
+  if (files.length <= FILES_SHOWN) {
+    return files.join(', ');
+  }
+  return `${files.slice(0, FILES_SHOWN).join(', ')} and ${files.length - FILES_SHOWN} more`;
+}
+
 export function ExportPanel({ registry, profile }: ExportPanelProps): React.JSX.Element {
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
 
@@ -55,7 +64,7 @@ export function ExportPanel({ registry, profile }: ExportPanelProps): React.JSX.
             }}
           >
             <span className={styles.exportName}>{codec.name}</span>
-            <span className={styles.exportFiles}>{codec.expectedFiles.join(', ')}</span>
+            <span className={styles.exportFiles}>{summarizeFiles(codec.expectedFiles)}</span>
           </button>
         ))}
       </div>
