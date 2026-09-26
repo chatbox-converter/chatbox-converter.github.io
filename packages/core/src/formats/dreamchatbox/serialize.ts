@@ -87,6 +87,14 @@ function toDream(state: SerializeState, template: string, path: string): string 
   return result.template;
 }
 
+/** Like `toDream`, but a disabled segment converts silently: its losses never reach the chatbox. */
+function segmentToDream(state: SerializeState, segment: Segment, path: string): string {
+  if (!segment.enabled) {
+    return canonicalToDream(segment.template).template;
+  }
+  return toDream(state, segment.template, path);
+}
+
 // ---------------------------------------------------------------- statuses
 
 function writeStatuses(state: SerializeState): void {
@@ -220,6 +228,7 @@ function writeAfk(state: SerializeState): void {
 function writeApps(state: SerializeState): void {
   const { cfg, profile } = state;
   const first = (kind: SegmentKind): Segment | undefined =>
+    profile.segments.find((s) => s.kind === kind && s.enabled) ??
     profile.segments.find((s) => s.kind === kind);
   const status = first('status');
   if (status !== undefined) {
@@ -238,8 +247,12 @@ function writeApps(state: SerializeState): void {
   if (hardware !== undefined) {
     cfg['hw_active'] = hardware.enabled;
     cfg['hw_custom'] = true;
-    cfg['hw_custom_template'] = toDream(state, hardware.template, 'config.json#hw_custom_template');
-    if (hardware.options.kind === 'hardware' && hardware.options.temperatureUnit === 'F') {
+    cfg['hw_custom_template'] = segmentToDream(state, hardware, 'config.json#hw_custom_template');
+    if (
+      hardware.enabled &&
+      hardware.options.kind === 'hardware' &&
+      hardware.options.temperatureUnit === 'F'
+    ) {
       state.collector.unsupported('Fahrenheit temperatures', 'config.json#hw_custom_template');
     }
   }
@@ -254,11 +267,7 @@ function writeMedia(state: SerializeState, media: Segment): void {
   const { cfg, collector } = state;
   cfg['media_active'] = media.enabled;
   cfg['media_custom'] = true;
-  cfg['media_custom_template'] = toDream(
-    state,
-    media.template,
-    'config.json#media_custom_template',
-  );
+  cfg['media_custom_template'] = segmentToDream(state, media, 'config.json#media_custom_template');
   cfg['media_icon'] = false;
   if (media.options.kind !== 'media') {
     return;
@@ -276,14 +285,14 @@ function writeMedia(state: SerializeState, media: Segment): void {
   } else if (placeholdersIn(idle).length === 0) {
     cfg['media_idle'] = true;
     cfg['media_idle_text'] = idle.slice(0, 20);
-  } else {
+  } else if (media.enabled) {
     collector.info(
       'unsupported-feature',
       'DreamChatbox shows a fixed idle text while paused; placeholders in the paused template were not carried over.',
       'config.json#media_idle_text',
     );
   }
-  if (options.transient) {
+  if (options.transient && media.enabled) {
     collector.unsupported('Transient (show-for-a-while) media display', 'config.json#media_active');
   }
 }
@@ -317,6 +326,9 @@ function writeLyricsPrefix(state: SerializeState, lyrics: Segment): void {
   const { cfg, collector } = state;
   const match = /^(\S{0,4}) ?\{lyrics\}$/u.exec(lyrics.template.trim());
   if (match === null) {
+    if (!lyrics.enabled) {
+      return;
+    }
     collector.info(
       'unsupported-feature',
       'DreamChatbox lyrics are always "<prefix> <line>"; the lyrics template was reduced to its prefix.',
@@ -359,20 +371,21 @@ function writeAio(state: SerializeState): boolean {
     .map((segment) => aioPart(state, segment))
     .filter((text) => text !== '')
     .join(' \\n ');
-  // Disabled segments keep their text in the spare slots (beyond `count`, so Dream never shows them).
+  // Disabled segments keep their text in the spare slots (beyond `count`, so Dream never
+  // shows them). They are stored silently: nothing about them reaches the chatbox.
   const spare = profile.segments
     .filter((s) => !s.enabled)
-    .map((s) => aioPart(state, s))
-    .filter((text) => text !== '');
-  const templates = [line, ...spare];
-  if (templates.length > AIO_MAX) {
-    collector.warn(
-      'limit-exceeded',
-      `DreamChatbox has ${AIO_MAX} All-in-one slots; ${templates.length - AIO_MAX} disabled segments were dropped.`,
+    .map((s) => canonicalToDream(s.template).template)
+    .filter((text) => text !== '' && text.includes('{'))
+    .slice(0, AIO_MAX - 1);
+  if (spare.length > 0) {
+    collector.info(
+      'aio-spare-slots',
+      `${spare.length} disabled integration(s) were stored as spare All-in-one slots.`,
       'config.json#aio_sets',
     );
   }
-  const slots = fixedList(templates, AIO_MAX, '', isStr);
+  const slots = fixedList([line, ...spare], AIO_MAX, '', isStr);
   const sets = list(cfg, 'aio_sets');
   const index = num(cfg, 'aio_set_active');
   const set = sets[index];

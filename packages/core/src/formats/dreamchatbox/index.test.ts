@@ -313,6 +313,7 @@ describe('dreamchatboxCodec.serialize', () => {
     );
     expect((cfg['aio_templates'] as string[])[1]).toBe('later {group_world}');
     expect(cfg['aio_count']).toBe(1);
+    expect(codes(result.diagnostics).filter((c) => c === 'aio-spare-slots')).toHaveLength(1);
     const set = (cfg['aio_sets'] as JsonObject[])[0];
     expect(set?.['templates']).toEqual(cfg['aio_templates']);
     expect(cfg['box_active']).toBe(false);
@@ -429,6 +430,24 @@ describe('dreamchatboxCodec.serialize', () => {
     expect(back.segments.find((s) => s.kind === 'media')?.options).toMatchObject({
       progressBar: { length: 13, filled: '=', empty: '-', position: 'o', start: '<', end: '>' },
     });
+  });
+});
+
+describe('dreamchatboxCodec serialize with disabled segments', () => {
+  it('never reports or forces AIO for disabled segments', () => {
+    const profile = createDefaultProfile({
+      segments: createDefaultProfile().segments.map((s) =>
+        s.kind === 'status' ? s : { ...s, enabled: false },
+      ),
+    });
+    expect(profile.segments.length).toBeGreaterThan(10);
+    const result = dreamchatboxCodec.serialize(profile);
+    const cfg = configOf(profile);
+    expect(cfg['aio_active']).toBe(false);
+    expect(cfg['status_active']).toBe(true);
+    expect(cfg['media_active']).toBe(false);
+    expect(cfg['hw_active']).toBe(false);
+    expect(codes(result.diagnostics)).toEqual([]);
   });
 });
 
