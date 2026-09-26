@@ -9,7 +9,9 @@ function extensionOf(path: string): string {
 }
 
 function relativePath(file: File): string {
-  const path = file.webkitRelativePath === '' ? file.name : file.webkitRelativePath;
+  // Folder uploads carry webkitRelativePath; plain files and test doubles may not.
+  const relative = 'webkitRelativePath' in file ? file.webkitRelativePath : '';
+  const path = relative === '' ? file.name : relative;
   // Drop the top-level folder a directory upload adds, so codecs see "modules/x.json".
   const parts = path.split('/');
   return parts.length > 1 ? parts.slice(1).join('/') : path;

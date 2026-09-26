@@ -1,0 +1,57 @@
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info {
+  color: var(--text-body-light);
+}
+
+.item {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: var(--fs-secondary);
+  line-height: 1.35;
+  background: var(--status-info-bg);
+  color: var(--text-body-light);
+}
+
+.warning {
+  background: var(--status-warning-bg);
+  color: #ffe3a3;
+}
+
+.error {
+  background: rgb(229 57 53 / 22%);
+  color: #ffc2cd;
+}
+
+.icon {
+  flex: none;
+  width: 14px;
+  text-align: center;
+}
+
+.message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.path {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-fine);
+  opacity: 0.8;
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--fs-secondary);
+  color: var(--text-success-light, #9ddaa8);
+}
