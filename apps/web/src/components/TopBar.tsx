@@ -27,13 +27,17 @@ export function TopBar({
           <button
             key={id}
             type="button"
-            className={cx(styles.tab, page === id && styles.active)}
+            className={cx(
+              styles.tab,
+              page === id && styles.active,
+              id === 'convert' && styles.highlight,
+            )}
             aria-current={page === id ? 'page' : undefined}
             onClick={() => {
               onNavigate(id);
             }}
           >
-            {PAGE_LABELS[id]}
+            <span className={styles.tabLabel}>{PAGE_LABELS[id]}</span>
           </button>
         ))}
       </nav>

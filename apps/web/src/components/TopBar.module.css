@@ -70,6 +70,82 @@
   box-shadow: 0 0 12px rgb(185 107 255 / 70%);
 }
 
+.tabLabel {
+  display: inline-block;
+}
+
+/* The Convert tab is the point of the site, so it gets the accent ramp sweeping through it. */
+.highlight .tabLabel {
+  background: linear-gradient(
+    90deg,
+    #d4cee2 0%,
+    #3fe0d2 25%,
+    #6e9bff 40%,
+    #b96bff 55%,
+    #ff6fc7 70%,
+    #d4cee2 100%
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: convert-wave 3.2s linear infinite;
+}
+
+.highlight::before {
+  content: '';
+  position: absolute;
+  inset: 6px 8px;
+  border-radius: 10px;
+  background: radial-gradient(ellipse at center, rgb(185 107 255 / 35%), transparent 70%);
+  filter: blur(10px);
+  animation: convert-pulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.highlight.active .tabLabel,
+.highlight:hover .tabLabel {
+  animation-duration: 1.6s;
+}
+
+@keyframes convert-wave {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes convert-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .highlight .tabLabel,
+  .highlight::before {
+    animation: none;
+  }
+
+  .highlight .tabLabel {
+    background-position: 40% 0;
+  }
+
+  .highlight::before {
+    opacity: 0.6;
+  }
+}
+
 .spacer {
   flex: 1;
 }
