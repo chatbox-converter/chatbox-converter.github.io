@@ -1,2 +1,10 @@
-// placeholder, replaced once the model exists
-export const CORE_VERSION = '0.1.0';
+export * from './model/placeholders';
+export * from './model/template';
+export * from './model/segments';
+export * from './model/profile';
+export * from './model/preview';
+export * from './formats/codec';
+export * from './util/json';
+export * from './util/dotnet';
+export * from './formats/registry';
+export * from './formats/native';

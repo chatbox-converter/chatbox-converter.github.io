@@ -776,7 +776,7 @@ World template tokens: `{master} {world} {count} {peak} {type} {region} {owner} 
 | `LocalLyricsFolder` | string | `""` |
 | `InstrumentalMarker` | enum `LyricsInstrumentalMarker` | `3` TrailingDots (values: 0 Note, 1 BouncingNotes, 3 TrailingDots, 6 Vinyl, 8 Pulse, 9 BouncingBall — **non-contiguous**) |
 | `SuperscriptAsides` | bool | `true` |
-| `MatchStrictness` | enum `LyricsMatchStrictness` | Balanced (see `LyricsMatchOptions.cs:5`) |
+| `MatchStrictness` | enum `LyricsMatchStrictness` | `1` Balanced (0 Relaxed, 1 Balanced, 2 Strict; `Lyrics/LyricsMatchOptions.cs:5-14`) |
 | `BroadenSearchWhenNoMatch` | bool | `true` |
 
 ### 2.22 `VoicemodSettings.json` (`app/Classes/Modules/Voicemod/VoicemodSettings.cs`)
@@ -873,6 +873,7 @@ All enums serialize as integers (no `StringEnumConverter` anywhere in the codeba
 | `VrPerformanceDisplayMode` | 0 Always, 1 OnlyWhenDegraded, 2 CompactThenExpand | `VrPerformanceSettings.cs:7-17` |
 | `LyricsMediaCoexistence` | 0 SideBySide, 1 PreferLyrics | `LyricsSettings.cs:10-17` |
 | `LyricsInstrumentalMarker` | 0 Note, 1 BouncingNotes, 3 TrailingDots, 6 Vinyl, 8 Pulse, 9 BouncingBall | `Lyrics/InstrumentalMarker.cs:8-26` |
+| `LyricsMatchStrictness` | 0 Relaxed, 1 Balanced, 2 Strict | `Lyrics/LyricsMatchOptions.cs:5-14` |
 | `VoicemodSoundSort` | 0 Recent, 1 Name | `VoicemodSettings.cs:12-19` |
 | `FilterMode` | 0 Exclude, 1 Include, 2 Remove | `TitleFilterRule.cs:18-28` |
 | `StatisticsTimeRange` | 0 _24h, 1 _7d, 2 _30d | `PulsoidTypes.cs:6-13` |
@@ -1110,22 +1111,22 @@ Encrypted persisted keys (complete list):
 | SortKey | UiKey | Priority (higher = dropped first) | Master toggle | Segment shape / prefix | Source |
 |---|---|---|---|---|---|
 | `Status` | Status | 10 | `IntgrStatus` (or AFK active) | `[<emoji from EmojiCollection> ]<msg>`; AFK: `<Prefix> <MessageWithTime><duration>` | `Providers/StatusOscProvider.cs`, `Status/StatusLine.cs` |
-| `Window` | Window | 30 | `IntgrScanWindowActivity` | `<VrTitle|DesktopTitle> [<FocusTitle>] <app>` e.g. `On desktop ⁱⁿ Blender` | `Providers/WindowOscProvider.cs:36-57` |
-| `Twitch` | Twitch | 50 | `IntgrTwitch` | template or built-in `LIVE | playing <game> | 123 viewers` (labels superscript when `UseSmallText`) | `Providers/TwitchOscProvider.cs` |
+| `Window` | Window | 30 | `IntgrScanWindowActivity` | `<VrTitle or DesktopTitle> [<FocusTitle>] <app>` e.g. `On desktop ⁱⁿ Blender` | `Providers/WindowOscProvider.cs:36-57` |
+| `Twitch` | Twitch | 50 | `IntgrTwitch` | template or built-in `LIVE \| playing <game> \| 123 viewers` (labels superscript when `UseSmallText`) | `Providers/TwitchOscProvider.cs` |
 | `TikTokLive` | TikTokLive | 52 | `IntgrTikTokLive` | templates §2.16 | `Providers/TikTokLiveOscProvider.cs` |
 | `Discord` | Discord | 45 | `IntgrDiscord` | `Template` §2.17 | `Providers/DiscordOscProvider.cs` |
 | `Spotify` | Spotify | 25 | `IntgrSpotify` | `OutputTemplate` §2.12; transient if `ShowOnlyOnChange` | `Providers/SpotifyOscProvider.cs` |
 | `VrcRadar` | VrcRadar | 35 | `IntgrVrcRadar` | templates §2.18 | `Providers/VrcLogOscProvider.cs` |
-| `HeartRate` | HeartRate | 40 | `IntgrHeartRate` && Pulsoid connected | `[Title: ]<icon><tempText> <hr>[ ᵇᵖᵐ][ trend][ stats|stats]` e.g. `❤️ 72 ᵇᵖᵐ ↑ 70 ᵃᵛᵍ|95 ᵐᵃˣ|60 ᵐⁱⁿ` | `PulsoidModule.cs:680-770` |
+| `HeartRate` | HeartRate | 40 | `IntgrHeartRate` && Pulsoid connected | `[Title: ]<icon><tempText> <hr>[ ᵇᵖᵐ][ trend][ stats\|stats]` e.g. `❤️ 72 ᵇᵖᵐ ↑ 70 ᵃᵛᵍ\|95 ᵐᵃˣ\|60 ᵐⁱⁿ` | `PulsoidModule.cs:680-770` |
 | `Component` | ComponentStat | 70 | `IntgrComponentStats` | `ᶜᵖᵘ 12﹪ ¦ ᵍᵖᵘ 40﹪ 🌡55° ⚡120W ¦ ʳᵃᵐ 8/32ᵍᵇ` joined by `StatsSeparator` | `ComponentStatsModule.cs:835-905` |
 | `VrPerformance` | VrPerformance | 65 | `IntgrVrPerformance` && VR | stats joined by `StatsSeparator` | `Providers/VrPerformanceOscProvider.cs` |
 | `TrackerBattery` | TrackerBattery | 60 | `IntgrTrackerBattery` && VR | `[Prefix ]entry Separator entry[ Suffix]` with `Template` per device | `TrackerBatteryModule.cs:432-463` |
-| `Network` | NetworkStatistics | 80 | `IntgrNetworkStatistics` | `Down 12.3 Mbps | Up …` fields joined with `" | "` | `NetworkStatisticsModule.cs:437-483` |
+| `Network` | NetworkStatistics | 80 | `IntgrNetworkStatistics` | `Down 12.3 Mbps \| Up …` fields joined with `" \| "` | `NetworkStatisticsModule.cs:437-483` |
 | `Weather` | Weather | 85 | `WeatherSettings.ShowWeatherInTime` | template or built-in; max segment 72 chars | `Providers/WeatherOscProvider.cs`, `WeatherSettings.cs:36-57` |
 | `Time` | Time | 90 | `IntgrScanWindowTime` | `[ᴹʸ ᵗⁱᵐᵉ ]<clock>` (`PrefixTime`) | `Providers/TimeOscProvider.cs`, `TimeSegmentFormatter.cs` |
 | `Soundpad` | Soundpad | 75 | `IntgrSoundpad` | `[🎶 ]'<title>'` | `Providers/SoundpadOscProvider.cs:11-75` |
 | `Voicemod` | Voicemod | 80 | `IntgrVoicemod` && announces | `🎶 '<sound>'` (transient) or `🎙️ '<voice>'` | `Providers/VoicemodOscProvider.cs` |
-| `MediaLink` | MediaLink | (see file) | `IntgrScanMediaLink` | `[<IconPlay>|<TextPlaying>] <title><Separator><artist>[\n<seekbar>]`; paused → `IconPause`/`TextPaused`; no session → `IconStop` | `Providers/MediaLinkOscProvider.cs:133-175, 225-241` |
+| `MediaLink` | MediaLink | 20 | `IntgrScanMediaLink` | `[<IconPlay> or <TextPlaying>] <title><Separator><artist>[\n<seekbar>]`; paused → `IconPause`/`TextPaused`; no session → `IconStop` | `Providers/MediaLinkOscProvider.cs:133-175, 225-241` |
 | `Lyrics` | Lyrics | 22 | `IntgrLyrics` | current lyric line (follows MediaLink/Spotify) | `Providers/LyricsOscProvider.cs` |
 
 Human names for keys: `app/Core/Osc/OscProviderNames.cs:8-29` (`Component`→"Component stats" is keyed as `ComponentStat`, `Network` as `NetworkStatistics` in UI names).
@@ -1175,7 +1176,7 @@ Minimal literal example of a provider file as the app writes it (defaults, `TtsS
 5. **Get-only computed properties are written but ignored on read** (`TwitchSettings.TemplateHasValue`, `VoicemodSettings.AnyFeatureEnabled/LiveSwitchesEnabled`, `PulsoidTrendSymbolSet.CombinedTrendSymbol`, `ProcessInfo.ContentFilterEnabled/HasContentFilter`, `ChatItem.CopyToClipboardCommand`, `IntelliChat` token totals). Never treat them as inputs; omitting them is safe.
 6. **Read-only legacy keys** must never be emitted: `AppSettings.JoinedAlphaChannel`, `AppSettings.OpenTrayWithAltQ`, `DiscordSettings.VoiceClientId`, `AfkModuleSettings.Styles`.
 7. **Unknown keys are ignored** (default `MissingMemberHandling.Ignore`); missing keys keep defaults. So partial files are valid input; a TS parser should apply the default tables above.
-8. **Collections replace defaults** (`ObjectCreationHandling.Replace`): an explicit `"HeartIcons": []` means empty, not "defaults". Only `JsonSettingsProvider` sets this globally; per-property `[JsonProperty(ObjectCreationHandling=Replace)]` covers `SavedSortOrder`, `HiddenTiles`, `HeartIcons`, `FavoriteSoundIds`, `RecentSoundIds`. For files read with plain `JsonConvert.DeserializeObject` (module-owned files) the default *Auto* handling also replaces for these types in practice because they are set via constructor/initialiser, but be aware `List<>` properties with initialisers would get appended under default settings—this only matters if you emit duplicate keys.
+8. **Collections replace defaults** in every provider-managed file: `JsonSettingsProvider` deserializes with `ObjectCreationHandling.Replace`, so an explicit `"HeartIcons": []` means empty, not "defaults". Module-owned files (`AfkModuleSettings.json`, `IntelliChatSettings.json`, `WhisperModuleSettings.json`, `ComponentStatsV1.json`, history files) are read with plain `JsonConvert.DeserializeObject` (default *Auto* handling, which appends to a pre-populated collection); this is harmless today because all of their collection defaults are empty, but a TS serializer must never emit a key twice. Per-property `[JsonProperty(ObjectCreationHandling = Replace)]` additionally marks `SavedSortOrder`, `HiddenTiles`, `HeartIcons`, `FavoriteSoundIds`, `RecentSoundIds`.
 9. **No `TypeNameHandling`**: no `$type` metadata anywhere. `$id/$ref` are not used either.
 10. **Null handling**: nulls are written (`"HardwareFriendlyName": null`), except properties annotated `NullValueHandling.Ignore` (the legacy setters and `Styles`). Strings default to `""`, not null; several setters coerce null → `""`.
 11. **Encrypted values are opaque** (DPAPI, user+machine bound, §6). Preserve verbatim or blank; never attempt to decode. Blanking a `*Encrypted` key also blanks the runtime plaintext.
