@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@chatbox-converter/core": "workspace:*",
+    "@fontsource-variable/albert-sans": "^5.3.0",
+    "@fontsource-variable/comfortaa": "^5.3.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
