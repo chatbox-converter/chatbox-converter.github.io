@@ -1,0 +1,16 @@
+{
+  "_schemaVersion": 1,
+  "_appVersion": "0.9.226.0",
+  "_migratedAt": null,
+  "OscIP": "192.168.1.20",
+  "OscPortOut": 9010,
+  "SecOSC": false,
+  "SecOSCIP": "127.0.0.1",
+  "SecOSCPort": 9002,
+  "ThirdOSC": false,
+  "ThirdOSCIP": "127.0.0.1",
+  "ThirdOSCPort": 9003,
+  "UnmuteMainOutput": true,
+  "UnmuteSecOutput": false,
+  "UnmuteThirdOutput": false
+}

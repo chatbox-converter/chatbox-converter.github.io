@@ -1,0 +1,61 @@
+{
+  "Version": 2,
+  "Groups": [
+    {
+      "GroupId": "3b1c2f4e-8a7d-4c1e-9f0a-1234567890ab",
+      "Name": "Default",
+      "IsActiveForCycle": true,
+      "CreationDate": "0001-01-01T00:00:00"
+    },
+    {
+      "GroupId": "9d8e7f6a-5b4c-4d3e-8f2a-0987654321ba",
+      "Name": "Gaming",
+      "IsActiveForCycle": false,
+      "CreationDate": "2025-06-10T20:15:00+02:00"
+    }
+  ],
+  "Items": [
+    {
+      "GroupId": "3b1c2f4e-8a7d-4c1e-9f0a-1234567890ab",
+      "IsSelected": false,
+      "UseInCycle": true,
+      "CreationDate": "2025-05-01T14:03:22.1234567+02:00",
+      "editMsg": "",
+      "IsActive": true,
+      "IsEditing": false,
+      "IsFavorite": true,
+      "LastEdited": "2025-05-01T14:03:22.1234567+02:00",
+      "LastUsed": "2025-06-11T09:00:00+02:00",
+      "msg": "Enjoy 💖",
+      "MSGID": 48213377
+    },
+    {
+      "GroupId": "3b1c2f4e-8a7d-4c1e-9f0a-1234567890ab",
+      "IsSelected": false,
+      "UseInCycle": true,
+      "CreationDate": "2025-05-01T14:03:22.1234567+02:00",
+      "editMsg": "",
+      "IsActive": false,
+      "IsEditing": false,
+      "IsFavorite": false,
+      "LastEdited": "0001-01-01T00:00:00",
+      "LastUsed": "0001-01-01T00:00:00",
+      "msg": "Below you can create your own status",
+      "MSGID": 91237
+    },
+    {
+      "GroupId": "9d8e7f6a-5b4c-4d3e-8f2a-0987654321ba",
+      "IsSelected": false,
+      "UseInCycle": false,
+      "CreationDate": "2025-06-10T20:16:00+02:00",
+      "editMsg": "",
+      "IsActive": false,
+      "IsEditing": false,
+      "IsFavorite": false,
+      "LastEdited": "0001-01-01T00:00:00",
+      "LastUsed": "0001-01-01T00:00:00",
+      "msg": "gaming with friends 🎮",
+      "MSGID": 7734511
+    }
+  ]
+}

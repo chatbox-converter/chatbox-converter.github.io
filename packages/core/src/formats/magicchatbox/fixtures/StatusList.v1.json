@@ -1,0 +1,28 @@
+[
+  {
+    "IsSelected": false,
+    "UseInCycle": false,
+    "CreationDate": "2024-02-01T10:00:00+01:00",
+    "editMsg": "",
+    "IsActive": false,
+    "IsEditing": false,
+    "IsFavorite": false,
+    "LastEdited": "0001-01-01T00:00:00",
+    "LastUsed": "0001-01-01T00:00:00",
+    "msg": "old status one",
+    "MSGID": 1234
+  },
+  {
+    "IsSelected": false,
+    "UseInCycle": true,
+    "CreationDate": "2024-02-01T10:00:00+01:00",
+    "editMsg": "",
+    "IsActive": true,
+    "IsEditing": false,
+    "IsFavorite": true,
+    "LastEdited": "0001-01-01T00:00:00",
+    "LastUsed": "0001-01-01T00:00:00",
+    "msg": "old status two",
+    "MSGID": 5678
+  }
+]

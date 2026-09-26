@@ -1,0 +1,14 @@
+{
+  "_schemaVersion": 1,
+  "_appVersion": "0.9.226.0",
+  "_migratedAt": null,
+  "Time24H": true,
+  "PrefixTime": true,
+  "TimeShowTimeZone": true,
+  "SelectedTimeZone": 8,
+  "UseDaylightSavingTime": true,
+  "UseSystemCulture": false,
+  "BussyBoysDate": "2025-05-01T14:03:22.1234567+02:00",
+  "BussyBoysDateEnable": false,
+  "BussyBoysMultiMODE": false
+}

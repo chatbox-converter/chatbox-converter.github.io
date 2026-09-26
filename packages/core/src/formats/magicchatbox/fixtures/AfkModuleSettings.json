@@ -1,0 +1,25 @@
+{
+  "AfkTimeout": 300,
+  "EnableAfkDetection": true,
+  "UseSmallLettersForDuration": true,
+  "ShowPrefixIcon": true,
+  "AfkPrefix": "🌙",
+  "ActivateInVR": false,
+  "ShowAFKTime": true,
+  "AfkMessageForTimeStamp": "away for ",
+  "AfkMessageWithoutTimeStamp": "away",
+  "OverrideAfk": false,
+  "CustomStyles": [
+    {
+      "Id": "1c2d3e4f-0000-4000-8000-000000000001",
+      "Name": "Coffee",
+      "ShowPrefix": true,
+      "Prefix": "☕",
+      "ShowTime": true,
+      "MessageWithTime": "coffee run, back in ",
+      "MessageWithoutTime": "coffee run",
+      "IsBuiltIn": false
+    }
+  ],
+  "ActiveStyleId": ""
+}
