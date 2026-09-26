@@ -19,7 +19,7 @@ export function TopBar({
   return (
     <header className={styles.bar}>
       <div className={styles.brand}>
-        <span className={styles.brandTop}>VRC OSC</span>
+        <span className={styles.brandTop}>VRChat OSC</span>
         <span className={styles.brandName}>Chatbox Converter</span>
       </div>
       <nav className={styles.tabs} aria-label="Pages">
