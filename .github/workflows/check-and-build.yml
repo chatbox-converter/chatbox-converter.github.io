@@ -1,0 +1,39 @@
+name: Check and rebuild docs (manual)
+
+# Manual only: workflows are not run automatically on this account.
+# Runs the full check gate and commits a fresh docs/ build back to the branch.
+on:
+  workflow_dispatch:
+    inputs:
+      commit_docs:
+        description: Commit the rebuilt docs/ folder back to the branch
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - name: Commit rebuilt docs/
+        if: ${{ inputs.commit_docs }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs
+          if git diff --cached --quiet; then
+            echo "docs/ is already up to date."
+          else
+            git commit -m "build: rebuild docs/"
+            git push
+          fi
