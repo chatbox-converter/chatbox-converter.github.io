@@ -6,7 +6,13 @@ import {
   renderTemplate,
   type TemplateValues,
 } from '../../model/template';
-import { ALIASED_SOURCES, PLAY_ICONS, STATUS_BUILTIN_VARIABLE, type MediaState } from './aliases';
+import {
+  ALIASED_SOURCES,
+  LOSSY_ALIASES,
+  PLAY_ICONS,
+  STATUS_BUILTIN_VARIABLE,
+  type MediaState,
+} from './aliases';
 import { MODULES, findModule, findVariable, sourcesFor, type VariableSource } from './catalog';
 import type { VrcVariable } from './document';
 import { bluscreamModuleId } from './modules-bluscream';
@@ -21,10 +27,11 @@ import { vEqual, type VObject } from './vjson';
  * tidy) and reported.
  *
  * Sources are chosen per segment ("segment-level module preference"): the
- * module covering the most of the segment's placeholders wins, official
- * modules win ties, and the remaining placeholders are covered the same way,
- * so a heart-rate line using `{heartrate_min}` links only Heartrate Stats and
- * a media line using `{lyrics}` only Linux Media.
+ * module covering the most of the segment's placeholders wins (a lossy
+ * converter-side alias such as the DateTime offset for `{timezone}` counts
+ * half a real variable), official modules win ties, and the remaining placeholders are
+ * covered the same way, so a heart-rate line using `{heartrate_min}` links only
+ * Heartrate Stats and a media line using `{lyrics}` only Linux Media.
  */
 export interface CompilePart {
   readonly template: string;
@@ -61,6 +68,8 @@ export interface CompileResult {
   readonly unsupported: readonly PlaceholderName[];
   /** Placeholders whose only source is a module without states (never renders). */
   readonly stateless: readonly PlaceholderName[];
+  /** Placeholders realised through a converter-side alias (`ALIASED_SOURCES`), not a real variable. */
+  readonly aliased: readonly PlaceholderName[];
   /** Module FullIDs in order of first use. */
   readonly modules: readonly string[];
 }
@@ -117,26 +126,38 @@ function moduleRank(moduleId: string | null): number {
 interface Coverage {
   readonly moduleId: string | null;
   readonly official: boolean;
+  /** Placeholders covered; one realised through a lossy alias counts `LOSSY_ALIAS_WEIGHT`. */
   readonly count: number;
 }
 
-/** Modules (null = built-in) providing a placeholder here, stateless ones excluded. */
+/** A real variable beats a lossy converter-side approximation of the same placeholder. */
+const LOSSY_ALIAS_WEIGHT = 0.5;
+
+function weightOf(source: VariableSource, name: PlaceholderName): number {
+  return LOSSY_ALIASES.has(name) && !isDirect(source, name) ? LOSSY_ALIAS_WEIGHT : 1;
+}
+
+/**
+ * Modules (null = built-in) providing a placeholder here, stateless ones
+ * excluded; a module with both a direct and an aliased variable is listed once,
+ * with its direct one.
+ */
 function providersOf(
   name: PlaceholderName,
   part: CompilePart,
   officialOnly: boolean,
 ): VariableSource[] {
-  const seen = new Set<string | null>();
-  return candidateSources(name, part.options, officialOnly).filter((source) => {
+  const best = new Map<string | null, VariableSource>();
+  for (const source of candidateSources(name, part.options, officialOnly)) {
     if (source.moduleId !== null && !hasStates(source.moduleId)) {
-      return false;
+      continue;
     }
-    if (seen.has(source.moduleId)) {
-      return false;
+    const current = best.get(source.moduleId);
+    if (current === undefined || (!isDirect(current, name) && isDirect(source, name))) {
+      best.set(source.moduleId, source);
     }
-    seen.add(source.moduleId);
-    return true;
-  });
+  }
+  return [...best.values()];
 }
 
 function tallyCoverage(
@@ -151,7 +172,7 @@ function tallyCoverage(
       coverage.set(source.moduleId, {
         moduleId: source.moduleId,
         official: source.official,
-        count: (current?.count ?? 0) + 1,
+        count: (current?.count ?? 0) + weightOf(source, name),
       });
     }
   }
@@ -160,8 +181,9 @@ function tallyCoverage(
 
 /**
  * Greedy set cover over the segment's placeholders: modules ordered by how
- * many still-uncovered placeholders they provide, the segment's preferred
- * heart-rate provider and official modules first among equals.
+ * many still-uncovered placeholders they provide (lossy aliases weigh less), the
+ * segment's preferred heart-rate provider and official modules first among
+ * equals.
  */
 function planModules(part: CompilePart, officialOnly: boolean): (string | null)[] {
   const preferred = heartrateModule(part.options);
@@ -345,7 +367,7 @@ function compilePart(
   part: CompilePart,
   input: CompileInput,
   table: VariableTable,
-  report: { unsupported: PlaceholderName[]; stateless: PlaceholderName[] },
+  report: Report,
 ): string | undefined {
   const chosen = planModules(part, input.officialOnly === true);
   const values: TemplateValues = {};
@@ -372,6 +394,9 @@ function compilePart(
     } else {
       values[token.name] = SENTINEL(table.indexOf(token.name, resolved));
       kept += 1;
+      if (!isDirect(resolved.source, token.name) && token.name !== 'status') {
+        pushUnique(report.aliased, token.name);
+      }
     }
   }
   // A segment that lost every placeholder is only decoration: drop it entirely.
@@ -382,9 +407,15 @@ function compilePart(
   return text === '' ? undefined : text;
 }
 
+interface Report {
+  readonly unsupported: PlaceholderName[];
+  readonly stateless: PlaceholderName[];
+  readonly aliased: PlaceholderName[];
+}
+
 export function compile(input: CompileInput): CompileResult {
   const table = new VariableTable();
-  const report = { unsupported: [] as PlaceholderName[], stateless: [] as PlaceholderName[] };
+  const report: Report = { unsupported: [], stateless: [], aliased: [] };
   const rendered: string[] = [];
   for (const part of input.parts) {
     const text = compilePart(part, input, table, report);
@@ -402,6 +433,7 @@ export function compile(input: CompileInput): CompileResult {
     variables: table.variables,
     unsupported: report.unsupported,
     stateless: report.stateless,
+    aliased: report.aliased,
     modules: table.modules,
   };
 }

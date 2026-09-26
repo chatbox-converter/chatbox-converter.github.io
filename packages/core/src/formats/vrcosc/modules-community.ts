@@ -13,7 +13,7 @@ import {
  * Community packages that register ChatBox items
  * (`.references/notes/ecosystem-plugins.md` Part A). Package ids keep their
  * original case; variable ids created from raw string lookups (Yeusepe's
- * modules) keep their PascalCase. The Bluscream modules added in `2026.0926.2`
+ * modules) keep their PascalCase. The Bluscream modules added since `2026.0926.2`
  * live in `modules-bluscream.ts`.
  */
 const YEUSEPE = 'YUCP.VIRA.yeusepesmodules';
@@ -164,7 +164,7 @@ export const COMMUNITY_MODULES: readonly VrcoscModule[] = [
       rhand_battery: variable('int', 'Right Hand Battery (%)', 'right_controller_battery'),
       rhand_charging: variable('bool', 'Right Hand Charging'),
     },
-    settings: { overlaysession: true },
+    settings: { overlaysession: true, debuglogging: false },
   }),
   community(BLUSCREAM, BLUSCREAM_REPO, 'desktopfpsmodule', 'Desktop FPS', {
     // Registers no states: a clip linked to it can never evaluate (see MAPPING.md).

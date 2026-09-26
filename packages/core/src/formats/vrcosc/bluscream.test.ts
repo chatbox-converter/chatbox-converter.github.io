@@ -7,7 +7,7 @@ import { CANONICAL_SOURCES, MODULES, findModule, vrcoscCodec } from './index';
 import { parseVJson, type VObject } from './vjson';
 
 /**
- * Bluscream/VRCOSC-Modules 2026.0926.2: catalog sanity, segment-level module
+ * Bluscream/VRCOSC-Modules 2026.0926.3: catalog sanity, segment-level module
  * preference, compound states for every module state and the Status module.
  */
 const B = 'bluscream.vrcosc.modules';
@@ -21,6 +21,7 @@ const NEW_MODULES = [
   'vrcextrasmodule',
   'mcbparitymodule',
   'openmeteoweathermodule',
+  'translationpatchesmodule',
 ] as const;
 
 /** Placeholders the converter provides itself (aliases and literals). */
@@ -187,9 +188,10 @@ describe('segment-level module preference', () => {
   });
 
   it('writes a compound state for every module state, hiding the segment when not main', () => {
-    // 2 × 2 × 3 × 2 × 3 × 1 × 2 × 3 × 3 = 1296 > 512: main plus one variant at a time.
-    expect(result.diagnostics.some((d) => d.code === 'too-many-states')).toBe(true);
-    expect(clip.states).toHaveLength(1 + 1 + 1 + 2 + 1 + 2 + 1 + 2 + 2);
+    // 2 × 2 × 3 × 2 × 1 × 1 × 2 × 3 × 3 = 432 ≤ 512: the full product, Linux Audio FX keeps
+    // every combination non-empty.
+    expect(result.diagnostics.some((d) => d.code === 'too-many-states')).toBe(false);
+    expect(clip.states).toHaveLength(432);
     const offline = stateWhere(clip, { [`${B}.streamstatsmodule`]: 'offline' });
     expect(offline?.format).not.toContain('viewers');
     const away = stateWhere(clip, { [`${B}.vrcextrasmodule`]: 'notininstance' });
@@ -200,11 +202,11 @@ describe('segment-level module preference', () => {
     );
     const quiet = stateWhere(clip, { [`${B}.discordvoicemodule`]: 'notinvoice' });
     expect(quiet?.variables.some((v) => v.variable_id === 'discord_speaking')).toBe(false);
-    // Linux Audio FX keeps the segment in both states; MagicChatbox Parity keeps VR values.
+    // Linux Audio FX keeps the segment in both states; MagicChatbox Parity only has `default`.
     const playing = stateWhere(clip, { [`${B}.linuxaudiofxmodule`]: 'playing' });
     expect(playing?.variables.some((v) => v.variable_id === 'soundpad_sound')).toBe(true);
-    const outside = stateWhere(clip, { [`${B}.mcbparitymodule`]: 'notininstance' });
-    expect(outside?.variables.some((v) => v.variable_id === 'vr_reprojection')).toBe(true);
+    expect(Object.keys(findModule(`${B}.mcbparitymodule`)?.states ?? {})).toEqual(['default']);
+    expect(clip.states.every((s) => s.states?.[`${B}.mcbparitymodule`] === 'default')).toBe(true);
     const paused = stateWhere(clip, { [`${B}.linuxmediamodule`]: 'paused' });
     expect(paused?.format).toContain('⏸ {');
   });
@@ -225,17 +227,44 @@ describe('segment-level module preference', () => {
       'volcanicarts.vrcosc.officialmodules.weathermodule',
       MEDIA,
       `${B}.vrcextrasmodule`,
-      `${B}.mcbparitymodule`,
     ]);
-    // 2 × 1 × 3 × 2 × 3 = 36, the status text keeps every combination non-empty.
-    expect(clip.states).toHaveLength(36);
+    // 2 × 1 × 3 × 2 = 12, the status text keeps every combination non-empty.
+    expect(clip.states).toHaveLength(12);
     expect(diagnostics.some((d) => d.code === 'too-many-states')).toBe(false);
-    const master = clip.states[0]?.variables.find((v) => v.variable_id === 'mastericon');
-    expect(master?.module_id).toBe(`${B}.vrcextrasmodule`);
-    const capacity = clip.states[0]?.variables.find(
-      (v) => v.variable_id === 'vrc_instance_capacity',
-    );
-    expect(capacity?.module_id).toBe(`${B}.mcbparitymodule`);
+    // VRChat Extras now fills the master icon and the world capacity itself (2026.0926.3).
+    const vrchat = clip.states[0]?.variables.filter((v) => v.module_id === `${B}.vrcextrasmodule`);
+    expect(vrchat?.map((v) => v.variable_id)).toEqual([
+      'mastericon',
+      'world',
+      'playercount',
+      'vrc_instance_capacity',
+    ]);
+    const away = stateWhere(clip, { [`${B}.vrcextrasmodule`]: 'notininstance' });
+    expect(away?.variables.some((v) => v.module_id === `${B}.vrcextrasmodule`)).toBe(false);
+  });
+
+  it('takes the zone abbreviation from MagicChatbox Parity only when no DateTime value is needed', () => {
+    const zoneOnly = createDefaultProfile({
+      segments: [createSegment('time', { id: 't', template: 'Zone {timezone}' })],
+    });
+    const alone = vrcoscCodec.serialize(zoneOnly);
+    expect(clipOf(alone.files).linked_modules).toEqual([`${B}.mcbparitymodule`]);
+    expect(clipOf(alone.files).states[0]?.variables[0]).toEqual({
+      module_id: `${B}.mcbparitymodule`,
+      variable_id: 'timezone',
+      options: {},
+    });
+    expect(alone.diagnostics.some((d) => d.code === 'timezone-offset')).toBe(false);
+
+    const withTime = createDefaultProfile({
+      segments: [createSegment('time', { id: 't', template: '{time} {timezone}' })],
+    });
+    const clock = vrcoscCodec.serialize(withTime);
+    expect(clipOf(clock.files).linked_modules).toEqual([
+      'volcanicarts.vrcosc.officialmodules.datetimemodule',
+    ]);
+    expect(clipOf(clock.files).states[0]?.variables[1]?.options['datetime_format']).toBe('zzz');
+    expect(clock.diagnostics.some((d) => d.code === 'timezone-offset')).toBe(true);
   });
 
   it('chooses Fahrenheit variables from Open-Meteo and writes its location', () => {
@@ -267,6 +296,48 @@ describe('segment-level module preference', () => {
     expect(JSON.parse(settings?.content ?? '{}')).toMatchObject({
       settings: { location: 'Berlin' },
     });
+  });
+});
+
+describe('Speech Translation', () => {
+  it('provides {speech_text} and {translation} as real variables and hides the segment when idle', () => {
+    const profile = createDefaultProfile({
+      segments: [
+        createSegment('speech', { id: 's', template: '🗣 {speech_text} → {translation}' }),
+        createSegment('time', { id: 't', template: '{time}' }),
+      ],
+    });
+    const { files, diagnostics } = vrcoscCodec.serialize(profile);
+    const clip = clipOf(files);
+    expect(clip.linked_modules).toEqual([
+      `${B}.translationpatchesmodule`,
+      'volcanicarts.vrcosc.officialmodules.datetimemodule',
+    ]);
+    expect(diagnostics.some((d) => d.code === 'translation-app-side')).toBe(false);
+    expect(diagnostics.filter((d) => d.code === 'unsupported-feature')).toEqual([]);
+    const speaking = stateWhere(clip, { [`${B}.translationpatchesmodule`]: 'speaking' });
+    expect(speaking?.format).toBe('🗣 {0} → {1}\n{2}');
+    expect(speaking?.variables.slice(0, 2).map((v) => [v.module_id, v.variable_id])).toEqual([
+      [`${B}.translationpatchesmodule`, 'speech_text'],
+      [`${B}.translationpatchesmodule`, 'translation'],
+    ]);
+    const idle = stateWhere(clip, { [`${B}.translationpatchesmodule`]: 'idle' });
+    expect(idle?.format).toBe('{0}');
+    expect(idle?.variables.some((v) => v.module_id === `${B}.translationpatchesmodule`)).toBe(
+      false,
+    );
+    const settings = files.find((file) => file.path.endsWith('translationpatchesmodule.json'));
+    expect(JSON.parse(settings?.content ?? '{}')).toEqual({
+      version: 1,
+      enabled: true,
+      settings: {},
+      parameters: {},
+    });
+
+    const back = vrcoscCodec.parse(files).profile;
+    expect(back.segments.map((segment) => segment.template)).toContain(
+      '🗣 {speech_text} → {translation}',
+    );
   });
 });
 

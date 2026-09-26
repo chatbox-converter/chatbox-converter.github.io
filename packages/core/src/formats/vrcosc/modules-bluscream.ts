@@ -1,7 +1,7 @@
 import { event, state, variable, type VrcoscModule, type VrcoscVariable } from './catalog-types';
 
 /**
- * Bluscream/VRCOSC-Modules `2026.0926.2` (branch `stable`): the modules added
+ * Bluscream/VRCOSC-Modules `2026.0926.3` (branch `stable`): the modules added
  * for MagicChatbox parity. The older Bluscream modules stay in
  * `modules-community.ts`; this file only exists to keep both under the size
  * limit. Enum-based ids are the C# member names lower-cased
@@ -275,6 +275,7 @@ export const BLUSCREAM_MODULES: readonly VrcoscModule[] = [
       notininstance: state('Not In Instance', ''),
     },
     events: { worldchanged: event('World Changed', 'Now in {0}', ['world']) },
+    // `mastericon` keeps its original key; `vrc_master` is its alias (same value).
     variables: {
       world: variable('string', 'World Name', 'vrc_world'),
       worldid: variable('string', 'World ID'),
@@ -286,8 +287,14 @@ export const BLUSCREAM_MODULES: readonly VrcoscModule[] = [
       agegated: variable('bool', 'Age Gated'),
       hasqueue: variable('bool', 'Has Queue'),
       mastericon: variable('string', 'Master Icon', 'vrc_master'),
+      vrc_master: variable('string', 'Master Icon (MagicChatbox key)', 'vrc_master'),
+      vrc_instance_capacity: variable(
+        'int',
+        'Instance Capacity (world capacity)',
+        'vrc_instance_capacity',
+      ),
     },
-    settings: { mastericon: '👑' },
+    settings: { mastericon: '👑', vrchatlogdirectory: '' },
   }),
   bluscream('openmeteoweathermodule', 'Open-Meteo Weather', {
     mainState: 'default',
@@ -319,67 +326,53 @@ export const BLUSCREAM_MODULES: readonly VrcoscModule[] = [
     settings: { location: '' },
   }),
   bluscream('mcbparitymodule', 'MagicChatbox Parity', {
-    // The module starts in `notininstance` and toggles with the VRChat log tail; `default` is never entered.
-    mainState: 'ininstance',
+    mainState: 'default',
     states: {
-      default: state('Default', '{0} {1} (feels {2})\n{3}\nReproj {4}% · Dropped {5}/min', [
-        'weather_emoji',
-        'weather_temp',
-        'weather_feels_like',
-        'weather_wind',
+      default: state('Default', 'Reproj {0}% · Dropped {1}/min', [
         'vr_reprojection',
         'vr_dropped_frames',
-      ]),
-      ininstance: state('In Instance', '{0} {1} (feels {2})\n{3} cap {4}', [
-        'weather_emoji',
-        'weather_temp',
-        'weather_feels_like',
-        'vrc_master',
-        'vrc_instance_capacity',
-      ]),
-      notininstance: state('Not In Instance', '{0} {1} (feels {2})\n{3}', [
-        'weather_emoji',
-        'weather_temp',
-        'weather_feels_like',
-        'weather_wind',
       ]),
     },
     events: {},
     // `MCBParityVariable` members are spelled like the MagicChatbox keys.
     variables: {
-      weather_temp: variable('string', 'Weather Temperature (with unit)', 'weather_temp'),
-      weather_feels_like: variable(
-        'string',
-        'Weather Feels Like (with unit)',
-        'weather_feels_like',
-      ),
-      weather_wind: variable('string', 'Weather Wind (speed + direction)', 'weather_wind'),
-      weather_emoji: variable('string', 'Weather Emoji', 'weather_emoji'),
-      weather_condition: variable('string', 'Weather Condition', 'weather_condition'),
-      weather_humidity: variable('int', 'Weather Humidity (%)', 'weather_humidity'),
-      vrc_instance_capacity: variable(
-        'int',
-        'Instance Capacity (world capacity)',
-        'vrc_instance_capacity',
-      ),
-      vrc_master: variable('string', 'Instance Master Icon', 'vrc_master'),
       vr_reprojection: variable(
         'int',
         'VR Reprojection (% of frames, last second)',
         'vr_reprojection',
       ),
       vr_dropped_frames: variable('int', 'VR Dropped Frames (per minute)', 'vr_dropped_frames'),
+      timezone: variable('string', 'Timezone Abbreviation (e.g. CEST)', 'timezone'),
+      timezone_offset: variable('string', 'Timezone Offset (e.g. +02:00)'),
+    },
+    settings: { vrframestats: true, timezoneoverride: '' },
+  }),
+  bluscream('translationpatchesmodule', 'Speech Translation', {
+    // Starts in `idle`; `speaking` holds the text for `SpeakingSeconds` after the last result.
+    mainState: 'speaking',
+    states: {
+      speaking: state('Speaking', '{0}\n{1}', ['speech_text', 'translation']),
+      idle: state('Idle', ''),
+    },
+    events: {
+      spoken: event('Spoken', '{0}', ['speech_text'], { showTyping: true, length: 10 }),
+      translated: event('Translated', '{0}', ['translation'], { showTyping: true, length: 10 }),
+      twoway: event('Two-way Translated', '{0}', ['twoway_output'], { length: 10 }),
+    },
+    // `TranslationVariable` members are spelled like the MagicChatbox keys.
+    variables: {
+      speech_text: variable('string', 'Speech Text (as spoken)', 'speech_text'),
+      translation: variable('string', 'Translation', 'translation'),
+      translation_language: variable('string', 'Translation Language'),
+      twoway_input: variable('string', 'Two-way Input (others, as spoken)'),
+      twoway_output: variable('string', 'Two-way Output (others, translated)'),
     },
     settings: {
-      weatherapikey: '',
-      weatherlocation: '',
-      weatherrefreshminutes: 10,
-      // `TemperatureUnit`: 0 Celsius, 1 Fahrenheit; `WindUnit`: 0 Kmh, 1 Mph.
-      temperatureunit: 0,
-      windunit: 0,
-      mastericon: '👑',
-      vrchatlogdirectory: '',
-      vrframestats: true,
+      targetlanguage: 'en',
+      speakingseconds: 10,
+      twowayenabled: false,
+      twowaydevice: 'Monitor',
+      twowaylanguage: 'en',
     },
   }),
 ];

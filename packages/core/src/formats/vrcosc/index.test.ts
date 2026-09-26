@@ -642,12 +642,12 @@ describe('vrcoscCodec converter-only mappings', () => {
     ],
   });
 
-  it('maps date, timezone, progress_percent, play_icon and translation without losses', () => {
+  it('maps date, timezone, progress_percent and play_icon without losses', () => {
     const { files, diagnostics } = vrcoscCodec.serialize(profile);
     expect(diagnostics.filter((d) => d.code === 'unsupported-feature')).toEqual([]);
-    expect(diagnostics.map((d) => d.code)).toEqual(
-      expect.arrayContaining(['translation-app-side', 'timezone-offset']),
-    );
+    expect(diagnostics.map((d) => d.code)).toContain('timezone-offset');
+    // Speech Translation has a real {translation} variable, so the app-side note does not apply.
+    expect(diagnostics.map((d) => d.code)).not.toContain('translation-app-side');
     const chatbox = files.find((f) => f.path === 'chatbox.json');
     const doc = JSON.parse(chatbox?.content ?? '{}') as {
       timeline: {
@@ -662,12 +662,14 @@ describe('vrcoscCodec converter-only mappings', () => {
     };
     const states = doc.timeline.clips[0]?.states ?? [];
     const playing = states.find(
-      (s) => s.states['volcanicarts.vrcosc.officialmodules.mediamodule'] === 'playing',
+      (s) =>
+        s.states['volcanicarts.vrcosc.officialmodules.mediamodule'] === 'playing' &&
+        s.states['bluscream.vrcosc.modules.translationpatchesmodule'] === 'speaking',
     );
     const paused = states.find(
       (s) => s.states['volcanicarts.vrcosc.officialmodules.mediamodule'] === 'paused',
     );
-    expect(playing?.format).toBe('{0} {1} {2}\n▶ {3} {4}\n{5} → {5}');
+    expect(playing?.format).toBe('{0} {1} {2}\n▶ {3} {4}\n{5} → {6}');
     expect(paused?.format).toContain('⏸');
     const formats = playing?.variables.map((v) => [
       v.variable_id,
@@ -680,9 +682,20 @@ describe('vrcoscCodec converter-only mappings', () => {
       ['now', 'zzz', undefined],
       ['artist', undefined, undefined],
       ['progressvisual', undefined, false],
-      ['text', undefined, undefined],
+      ['speech_text', undefined, undefined],
+      ['translation', undefined, undefined],
     ]);
     expect(playing?.variables[2]?.options['timezone_id']).toBe('Europe/Berlin');
+  });
+
+  it('keeps the official Speech To Text module and the app-side translation note when only official modules apply', () => {
+    const official = createDefaultProfile({
+      segments: [createSegment('speech', { id: 's', template: '{speech_text}' })],
+    });
+    const { files } = vrcoscCodec.serialize(official);
+    const chatbox = files.find((f) => f.path === 'chatbox.json');
+    expect(chatbox?.content).toContain('volcanicarts.vrcosc.officialmodules.speechtotextmodule');
+    expect(chatbox?.content).not.toContain('translationpatchesmodule');
   });
 
   it('reads the offset format back as {timezone} and the bar-less progress as {progress_percent}', () => {

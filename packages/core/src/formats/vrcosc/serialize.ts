@@ -1,7 +1,6 @@
 import type { PlaceholderName } from '../../model/placeholders';
 import { activeStatus, type ChatboxProfile } from '../../model/profile';
 import { defaultSegmentOptions, type Segment } from '../../model/segments';
-import { placeholdersIn } from '../../model/template';
 import { DiagnosticCollector, type ConfigFile, type SerializeResult } from '../codec';
 import { findModule, officialModuleId, type VrcoscModule } from './catalog';
 import { compile, type CompilePart, type MediaState } from './compile';
@@ -26,12 +25,6 @@ import { stringifyVJson, type VObject } from './vjson';
  */
 const AFK_MODULE = officialModuleId('afkdetectionmodule');
 const LINUX_AUDIO_FX_MODULE = bluscreamModuleId('linuxaudiofxmodule');
-const MCB_PARITY_MODULE = bluscreamModuleId('mcbparitymodule');
-/** MagicChatbox Parity only changes state for its instance variables. */
-const MCB_PARITY_INSTANCE_PLACEHOLDERS: readonly PlaceholderName[] = [
-  'vrc_instance_capacity',
-  'vrc_master',
-];
 /** Above this many compound states only single-variant combinations are written. */
 const MAX_COMPOUND_STATES = 512;
 
@@ -40,6 +33,8 @@ interface ClipPlan {
   readonly states: readonly VrcState[];
   readonly unsupported: readonly PlaceholderName[];
   readonly stateless: readonly PlaceholderName[];
+  /** Placeholders the clip realises through a converter-side alias. */
+  readonly aliased: readonly PlaceholderName[];
   readonly truncated: boolean;
 }
 
@@ -136,10 +131,6 @@ function variantTemplate(
   if (module.fullId === LINUX_AUDIO_FX_MODULE || module.fullId === AFK_MODULE) {
     return undefined;
   }
-  if (module.fullId === MCB_PARITY_MODULE) {
-    const names = placeholdersIn(segment.template);
-    return MCB_PARITY_INSTANCE_PLACEHOLDERS.some((name) => names.includes(name)) ? '' : undefined;
-  }
   return '';
 }
 
@@ -197,6 +188,7 @@ function planClip(profile: ChatboxProfile, segments: readonly Segment[]): ClipPl
   }
   const unsupported = [...main.unsupported, ...(afkCompiled?.unsupported ?? [])];
   const stateless = [...main.stateless, ...(afkCompiled?.stateless ?? [])];
+  const aliased = [...main.aliased, ...(afkCompiled?.aliased ?? [])];
 
   const states: VrcState[] = [];
   const { list, truncated } = combinations(linkedModules);
@@ -230,7 +222,7 @@ function planClip(profile: ChatboxProfile, segments: readonly Segment[]): ClipPl
       states: linkedModules.length === 0 ? null : dictionary,
     });
   }
-  return { linkedModules, states, unsupported, stateless, truncated };
+  return { linkedModules, states, unsupported, stateless, aliased, truncated };
 }
 
 function moduleSettings(moduleId: string, profile: ChatboxProfile): VObject {
@@ -279,14 +271,13 @@ function reportPlan(plan: ClipPlan, profile: ChatboxProfile, collector: Diagnost
   for (const name of plan.unsupported) {
     collector.unsupported(`Placeholder {${name}}`);
   }
-  const templates = profile.segments.filter((s) => s.enabled).map((s) => s.template);
-  if (templates.some((template) => placeholdersIn(template).includes('translation'))) {
+  if (plan.aliased.includes('translation')) {
     collector.info(
       'translation-app-side',
       'VRCOSC translates speech in the app itself (Settings → Speech → Translate); {translation} was mapped to the speech-to-text result, which then already holds the translated text.',
     );
   }
-  if (templates.some((template) => placeholdersIn(template).includes('timezone'))) {
+  if (plan.aliased.includes('timezone')) {
     collector.info(
       'timezone-offset',
       '{timezone} is rendered as the UTC offset (e.g. +02:00); .NET date formats have no zone abbreviation.',

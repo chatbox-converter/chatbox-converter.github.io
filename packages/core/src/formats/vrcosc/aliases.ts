@@ -29,6 +29,14 @@ export const ALIASED_SOURCES: Partial<Record<PlaceholderName, PlaceholderName>> 
   translation: 'speech_text',
 };
 
+/**
+ * Aliases that only approximate the placeholder (an offset instead of a zone
+ * abbreviation, the app-side translation): a module with a real variable for
+ * them beats the alias when modules are chosen (`planModules` in compile.ts).
+ * `date` and `progress_percent` render exactly and count like real variables.
+ */
+export const LOSSY_ALIASES: ReadonlySet<PlaceholderName> = new Set(['timezone', 'translation']);
+
 /** How each alias is realised, for the coverage catalog (`variableOptions` in compile.ts). */
 export const ALIAS_NOTES: Partial<Record<PlaceholderName, string>> = {
   date: 'same DateTime variable with a yyyy-MM-dd format',
