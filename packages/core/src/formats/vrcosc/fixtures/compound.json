@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "timeline": {
+    "length": 60,
+    "clips": [
+      {
+        "layer": 0,
+        "enabled": true,
+        "name": "Everything",
+        "start": 0,
+        "end": 60,
+        "linked_modules": [
+          "volcanicarts.vrcosc.officialmodules.mediamodule",
+          "volcanicarts.vrcosc.officialmodules.pulsoidmodule",
+          "volcanicarts.vrcosc.officialmodules.datetimemodule"
+        ],
+        "states": [
+          {
+            "enabled": true,
+            "format": "▶ {0} - {1}\n♥ {2} bpm\n🕒 {3}",
+            "show_typing": false,
+            "use_minimal_background": false,
+            "variables": [
+              { "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule", "variable_id": "artist", "options": {} },
+              {
+                "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule",
+                "variable_id": "title",
+                "options": {
+                  "case_mode": 0,
+                  "truncate_length": 24,
+                  "include_ellipses": true,
+                  "scroll_direction": 0,
+                  "scroll_speed": 0,
+                  "join_string": "",
+                  "only_scroll_when_truncated": false
+                }
+              },
+              { "module_id": "volcanicarts.vrcosc.officialmodules.pulsoidmodule", "variable_id": "current", "options": {} },
+              {
+                "module_id": "volcanicarts.vrcosc.officialmodules.datetimemodule",
+                "variable_id": "now",
+                "options": {
+                  "datetime_format": "hh:mm:ss tt",
+                  "timezone_id": "Tokyo Standard Time",
+                  "case_mode": 0,
+                  "truncate_length": -1,
+                  "include_ellipses": false,
+                  "scroll_direction": 0,
+                  "scroll_speed": 0,
+                  "join_string": "",
+                  "only_scroll_when_truncated": false
+                }
+              }
+            ],
+            "states": {
+              "volcanicarts.vrcosc.officialmodules.mediamodule": "playing",
+              "volcanicarts.vrcosc.officialmodules.pulsoidmodule": "connected",
+              "volcanicarts.vrcosc.officialmodules.datetimemodule": "default"
+            }
+          },
+          {
+            "enabled": true,
+            "format": "⏸ {0} - {1}\n♥ {2} bpm\n🕒 {3}",
+            "show_typing": false,
+            "use_minimal_background": false,
+            "variables": [
+              { "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule", "variable_id": "artist", "options": {} },
+              { "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule", "variable_id": "title", "options": {} },
+              { "module_id": "volcanicarts.vrcosc.officialmodules.pulsoidmodule", "variable_id": "current", "options": {} },
+              {
+                "module_id": "volcanicarts.vrcosc.officialmodules.datetimemodule",
+                "variable_id": "now",
+                "options": {
+                  "datetime_format": "hh:mm:ss tt",
+                  "timezone_id": "Tokyo Standard Time",
+                  "case_mode": 0,
+                  "truncate_length": -1,
+                  "include_ellipses": false,
+                  "scroll_direction": 0,
+                  "scroll_speed": 0,
+                  "join_string": "",
+                  "only_scroll_when_truncated": false
+                }
+              }
+            ],
+            "states": {
+              "volcanicarts.vrcosc.officialmodules.mediamodule": "paused",
+              "volcanicarts.vrcosc.officialmodules.pulsoidmodule": "connected",
+              "volcanicarts.vrcosc.officialmodules.datetimemodule": "default"
+            }
+          }
+        ],
+        "events": []
+      },
+      {
+        "layer": 1,
+        "enabled": true,
+        "name": "Fallback",
+        "start": 0,
+        "end": 60,
+        "linked_modules": [],
+        "states": [
+          {
+            "enabled": true,
+            "format": "{0}",
+            "show_typing": false,
+            "use_minimal_background": false,
+            "variables": [
+              {
+                "module_id": null,
+                "variable_id": "text",
+                "options": {
+                  "text": "Enjoy 💖",
+                  "case_mode": 0,
+                  "truncate_length": -1,
+                  "include_ellipses": false,
+                  "scroll_direction": 0,
+                  "scroll_speed": 0,
+                  "join_string": "",
+                  "only_scroll_when_truncated": false
+                }
+              }
+            ],
+            "states": null
+          }
+        ],
+        "events": []
+      }
+    ]
+  }
+}

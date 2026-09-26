@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "timeline": {
+    "length": 60,
+    "clips": [
+      {
+        "layer": 0,
+        "enabled": true,
+        "name": "Music",
+        "start": 0,
+        "end": 30,
+        "linked_modules": [
+          "volcanicarts.vrcosc.officialmodules.mediamodule"
+        ],
+        "states": [
+          {
+            "enabled": true,
+            "format": "🎵 {2} - {3}\n{0}/{1} {4}",
+            "show_typing": false,
+            "use_minimal_background": true,
+            "variables": [
+              { "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule", "variable_id": "time", "options": {} },
+              { "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule", "variable_id": "duration", "options": {} },
+              {
+                "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule",
+                "variable_id": "artist",
+                "options": {
+                  "case_mode": 0,
+                  "truncate_length": 20,
+                  "include_ellipses": true,
+                  "scroll_direction": 0,
+                  "scroll_speed": 0,
+                  "join_string": "",
+                  "only_scroll_when_truncated": false
+                }
+              },
+              { "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule", "variable_id": "title", "options": {} },
+              {
+                "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule",
+                "variable_id": "progressvisual",
+                "options": {
+                  "use_visual": true,
+                  "visual_resolution": 10,
+                  "visual_line": "━",
+                  "visual_line_complete": "━",
+                  "visual_position": "●",
+                  "visual_start": "┣",
+                  "visual_end": "┫",
+                  "case_mode": 0,
+                  "truncate_length": -1,
+                  "include_ellipses": false,
+                  "scroll_direction": 0,
+                  "scroll_speed": 0,
+                  "join_string": "",
+                  "only_scroll_when_truncated": false
+                }
+              }
+            ],
+            "states": {
+              "volcanicarts.vrcosc.officialmodules.mediamodule": "playing"
+            }
+          }
+        ],
+        "events": [
+          {
+            "enabled": true,
+            "format": "Now Playing\n{0} - {1}",
+            "show_typing": true,
+            "use_minimal_background": false,
+            "variables": [
+              { "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule", "variable_id": "artist", "options": {} },
+              { "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule", "variable_id": "title", "options": {} }
+            ],
+            "module_id": "volcanicarts.vrcosc.officialmodules.mediamodule",
+            "event_id": "ontrackchange",
+            "length": 8.0,
+            "behaviour": 1
+          }
+        ]
+      },
+      {
+        "layer": 1,
+        "enabled": true,
+        "name": "Countdown",
+        "start": 0,
+        "end": 60,
+        "linked_modules": [],
+        "states": [
+          {
+            "enabled": true,
+            "format": "{0} in {1}",
+            "show_typing": false,
+            "use_minimal_background": false,
+            "variables": [
+              {
+                "module_id": null,
+                "variable_id": "text",
+                "options": {
+                  "text": "Stream starts",
+                  "case_mode": 0,
+                  "truncate_length": -1,
+                  "include_ellipses": false,
+                  "scroll_direction": 0,
+                  "scroll_speed": 0,
+                  "join_string": "",
+                  "only_scroll_when_truncated": false
+                }
+              },
+              {
+                "module_id": null,
+                "variable_id": "timer",
+                "options": {
+                  "datetime": 638990490000000000,
+                  "time_format": "hh\\:mm\\:ss",
+                  "include_negative_sign": true,
+                  "case_mode": 0,
+                  "truncate_length": -1,
+                  "include_ellipses": false,
+                  "scroll_direction": 0,
+                  "scroll_speed": 0,
+                  "join_string": "",
+                  "only_scroll_when_truncated": false
+                }
+              }
+            ],
+            "states": null
+          }
+        ],
+        "events": []
+      }
+    ]
+  }
+}

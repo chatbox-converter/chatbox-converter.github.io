@@ -11,7 +11,8 @@ import { ProfileProvider } from '@/state/ProfileProvider';
 import styles from './App.module.css';
 
 function pageFromHash(): PageId {
-  const hash = window.location.hash.replace(/^#\/?/, '');
+  // `#/options?section=media` carries a query the Options page reads itself.
+  const hash = window.location.hash.replace(/^#\/?/, '').split('?')[0] ?? '';
   return isPageId(hash) ? hash : 'integrations';
 }
 

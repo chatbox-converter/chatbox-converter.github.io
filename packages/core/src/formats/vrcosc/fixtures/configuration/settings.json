@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "settings": {
+    "StartInTray": false,
+    "ChatBoxSendInterval": 2000,
+    "ConnectionMode": 2,
+    "OutgoingEndpoint": "192.168.1.20:9010",
+    "IncomingEndpoint": "127.0.0.1:9001"
+  },
+  "metadata": {
+    "InstalledVersion": "2026.807.0"
+  }
+}
