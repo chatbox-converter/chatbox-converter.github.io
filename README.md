@@ -24,6 +24,15 @@ built from a shared placeholder vocabulary, plus statuses, AFK, output and OSC s
 format has a codec that parses into that model and serialises from it; see
 `packages/core/src/formats/*/MAPPING.md` for the exact field-by-field tables and known losses.
 
+## How the UI maps to MagicChatbox
+
+The Integrations, Status and Options tabs follow MagicChatbox's layout, wording and theme so its
+users can find their way around. MagicChatbox's Chatting tab (a live chat sender) is replaced by
+**Convert**, the import/export page, because a config tool has nothing to send. Options sections
+expose the neutral model rather than every MagicChatbox setting, so sections that only exist for
+one app (OpenAI, TTS, privacy consents) are carried through untouched on a MagicChatbox round trip
+but are not editable here.
+
 ## Repository layout
 
 | Path            | What                                                                                                                                |

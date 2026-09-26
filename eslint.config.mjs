@@ -78,6 +78,8 @@ export default tseslint.config(
   {
     files: ['scripts/**/*.{js,mjs}'],
     languageOptions: { globals: globals.node },
+    // CLI scripts report to stdout by design.
+    rules: { 'no-console': 'off' },
   },
   prettier,
 );

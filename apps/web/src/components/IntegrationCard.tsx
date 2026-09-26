@@ -12,6 +12,8 @@ interface IntegrationCardProps {
   readonly hiddenInMode: boolean;
   readonly isFirst: boolean;
   readonly isLast: boolean;
+  /** 1-based position among segments of the same kind, when there is more than one. */
+  readonly ordinal: number | null;
   readonly onPatch: (patch: Partial<Omit<Segment, 'id' | 'kind'>>) => void;
   readonly onMove: (direction: -1 | 1) => void;
   readonly onRemove: () => void;
@@ -24,6 +26,7 @@ export function IntegrationCard({
   hiddenInMode,
   isFirst,
   isLast,
+  ordinal,
   onPatch,
   onMove,
   onRemove,
@@ -46,6 +49,7 @@ export function IntegrationCard({
       <div className={styles.text}>
         <h2 className={styles.title}>
           {info.title}
+          {ordinal === null ? null : <span className={styles.ordinal}>#{ordinal}</span>}
           {live ? <span className={styles.pill}>{previewText}</span> : null}
         </h2>
         <p className={styles.description}>{info.description}</p>

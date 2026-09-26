@@ -65,6 +65,14 @@
   min-width: 0;
 }
 
+.ordinal {
+  font-family: var(--font-primary);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-soft-purple);
+  text-shadow: none;
+}
+
 .pill {
   max-width: 260px;
   padding: 2px 7px;

@@ -46,6 +46,8 @@ export function IntegrationsPage({ previewMode }: IntegrationsPageProps): React.
       <div className={styles.list}>
         {profile.segments.map((segment, index) => {
           const rendered = preview.segments.find((entry) => entry.segment.id === segment.id);
+          const sameKind = profile.segments.filter((other) => other.kind === segment.kind);
+          const ordinal = sameKind.length > 1 ? sameKind.indexOf(segment) + 1 : null;
           return (
             <IntegrationCard
               key={segment.id}
@@ -54,6 +56,7 @@ export function IntegrationsPage({ previewMode }: IntegrationsPageProps): React.
               hiddenInMode={!isSegmentVisible(segment, previewMode)}
               isFirst={index === 0}
               isLast={index === profile.segments.length - 1}
+              ordinal={ordinal}
               onPatch={(patch) => {
                 dispatch({ type: 'segment/update', id: segment.id, patch });
               }}
