@@ -1,0 +1,23 @@
+{
+  "name": "@chatbox-converter/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Framework-free parsers, serializers and the neutral model for VRChat chatbox app configs.",
+  "license": "Unlicense",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}
