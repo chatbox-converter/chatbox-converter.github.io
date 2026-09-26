@@ -1,0 +1,80 @@
+.page {
+  padding: 4px 0 24px;
+}
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 12px 6px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: rgb(255 255 255 / 15%);
+  color: var(--text-light-purple);
+  font-size: var(--fs-fine);
+}
+
+.hintTrim {
+  background: rgb(255 196 107 / 25%);
+  color: #ffd79a;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  padding-top: 5px;
+}
+
+.addStrip {
+  margin: 10px 10px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #3a2f63;
+  background: linear-gradient(90deg, rgb(46 31 92 / 30%), rgb(43 27 74 / 15%));
+  position: relative;
+  overflow: hidden;
+}
+
+.addStrip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, #3fe0d2, #b96bff);
+}
+
+.addLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: var(--fs-fine);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-light-purple);
+}
+
+.addChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.addChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 6px;
+  background: rgb(0 0 0 / 18%);
+  color: var(--text-light-purple);
+  font-size: var(--fs-caption);
+  cursor: pointer;
+}
+
+.addChip:hover {
+  border-color: #a97bff;
+  color: var(--text-bright);
+}

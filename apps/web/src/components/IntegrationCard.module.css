@@ -1,0 +1,142 @@
+.card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0 6px;
+  margin: 0 5px 5px;
+  padding: 3px 3px 3px 0;
+  border: 1px solid #150c33;
+  border-radius: 5px;
+  background: var(--tile-surface);
+  transition: opacity 0.15s ease;
+}
+
+.off {
+  opacity: 0.62;
+}
+
+.rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 5px 0 0 5px;
+  background: rgb(255 255 255 / 10%);
+}
+
+.railLive {
+  background: linear-gradient(180deg, #3fe0d2, #b96bff);
+}
+
+.iconFrame {
+  width: 50px;
+  height: 50px;
+  margin: 4px 6px 4px 9px;
+  border-radius: 10px;
+  background: var(--tile-icon-frame);
+  border: 1px solid var(--tile-icon-frame-border);
+  display: grid;
+  place-items: center;
+}
+
+.icon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.text {
+  min-width: 0;
+  padding: 6px 0;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--font-secondary);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 0 10px #251153;
+  min-width: 0;
+}
+
+.pill {
+  max-width: 260px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgb(255 255 255 / 10%);
+  color: #c6b9e8;
+  font-family: var(--font-primary);
+  font-size: var(--fs-fine);
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: none;
+}
+
+.description {
+  margin: 3px 0 0;
+  font-family: var(--font-secondary);
+  font-size: var(--fs-secondary);
+  color: var(--tile-description);
+  text-shadow: 0 0 10px #251153;
+}
+
+.deck {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 246px;
+  margin: 6px 2px 6px 0;
+}
+
+.deckRow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.orderButton {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-light-purple);
+  font-size: var(--fs-caption);
+  cursor: pointer;
+}
+
+.orderButton:hover:not(:disabled) {
+  background: rgb(255 255 255 / 10%);
+}
+
+.orderButton:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.switch {
+  margin: 0 5px;
+}
+
+@media (max-width: 900px) {
+  .card {
+    grid-template-columns: 62px minmax(0, 1fr) auto;
+  }
+
+  .deck {
+    grid-column: 1 / -1;
+    min-width: 0;
+    align-items: flex-start;
+    margin: 0 8px 8px;
+  }
+}

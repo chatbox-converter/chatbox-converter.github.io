@@ -1,0 +1,64 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-light-purple);
+  font-family: var(--font-primary);
+  font-size: var(--fs-fine);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.route:hover:not(:disabled) {
+  background: rgb(255 255 255 / 12%);
+  border-color: #a97bff;
+}
+
+.route.on {
+  background: #b9a6ee;
+  border-color: #d3c4ff;
+  color: #17102e;
+}
+
+.feature.on {
+  background: rgb(185 107 255 / 24%);
+  border-color: #b96bff;
+  color: #efe4ff;
+}
+
+.feature:hover:not(:disabled) {
+  border-color: #b96bff;
+}
+
+.static {
+  cursor: default;
+  min-width: 96px;
+  color: var(--text-soft-purple);
+}
+
+.door {
+  border-color: transparent;
+  background: rgb(0 0 0 / 18%);
+  color: var(--text-light-purple);
+  padding: 0 10px 0 11px;
+}
+
+.door:hover:not(:disabled) {
+  background: rgb(0 0 0 / 30%);
+  color: var(--text-bright);
+}

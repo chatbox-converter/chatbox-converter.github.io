@@ -4,8 +4,8 @@
   width: 222px;
   flex: none;
   padding: 10px 8px 12px;
-  background: var(--surface-card);
-  border-left: 1px solid rgb(0 0 0 / 25%);
+  background: var(--surface-sidebar);
+  border-left: 1px solid rgb(0 0 139 / 10%);
   overflow-y: auto;
   gap: 8px;
 }
@@ -38,10 +38,11 @@
 }
 
 .previewBox {
-  min-height: 150px;
-  padding: 12px 10px 28px;
-  border-radius: 8px;
-  background: var(--surface-card-dark);
+  min-height: 157px;
+  padding: 11px 10px 28px;
+  border-radius: 10px;
+  border: 1px solid #4a3c72;
+  background: linear-gradient(180deg, #302548, #261d3b);
   position: relative;
   display: flex;
   justify-content: center;
@@ -77,9 +78,10 @@
 }
 
 .panel {
-  padding: 8px;
-  border-radius: 8px;
-  background: var(--surface-card-dark);
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid #4a3c72;
+  background: #2c2148;
   display: flex;
   flex-direction: column;
   gap: 6px;
