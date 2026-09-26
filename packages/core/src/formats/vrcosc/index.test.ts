@@ -14,6 +14,7 @@ const MEDIA = 'volcanicarts.vrcosc.officialmodules.mediamodule';
 const PULSOID = 'volcanicarts.vrcosc.officialmodules.pulsoidmodule';
 const DATETIME = 'volcanicarts.vrcosc.officialmodules.datetimemodule';
 const AFK = 'volcanicarts.vrcosc.officialmodules.afkdetectionmodule';
+const STATUS = 'bluscream.vrcosc.modules.statusmodule';
 
 function fixture(name: string, path = name): ConfigFile {
   return { path, content: readFileSync(join(FIXTURES, name), 'utf8') };
@@ -356,73 +357,86 @@ describe('vrcoscCodec.serialize', () => {
     expect(chatbox?.content).toContain('"use_minimal_background": true');
   });
 
-  it('creates one clip per cycled status and caps the timeline', () => {
+  it('hands a cycled status list to the Status module in a single clip', () => {
     const statuses = ['a', 'b', 'c'].map((text, index) =>
-      createStatusItem(text, { id: text, active: index === 0, useInCycle: true }),
+      createStatusItem(text, { id: text, active: index === 1, useInCycle: index !== 2 }),
     );
     const cycling = createDefaultProfile({
       statuses,
-      statusCycle: { enabled: true, intervalSeconds: 15, random: false },
+      statusCycle: { enabled: true, intervalSeconds: 15, random: true },
       segments: [createSegment('status', { id: 's' })],
     });
     const { files, diagnostics } = vrcoscCodec.serialize(cycling);
     const document = chatboxOf(files);
-    expect((document['timeline'] as VObject)['length']).toBe(45);
+    expect((document['timeline'] as VObject)['length']).toBe(60);
     const clips = clipsOf(document);
-    expect(clips.map((clip) => [clip.start, clip.end])).toEqual([
-      [0, 15],
-      [15, 30],
-      [30, 45],
+    expect(clips).toHaveLength(1);
+    expect(clips[0]?.linked_modules).toEqual([STATUS]);
+    expect(clips[0]?.states.map((state) => state.states)).toEqual([{ [STATUS]: 'default' }]);
+    expect(clips[0]?.states[0]?.variables).toEqual([
+      { module_id: STATUS, variable_id: 'text', options: {} },
     ]);
-    expect(clips.map((clip) => clip.states[0]?.variables[0]?.options['text'])).toEqual([
-      'a',
-      'b',
-      'c',
-    ]);
-    expect(clips.every((clip) => clip.layer === 0 && clip.states[0]?.states === null)).toBe(true);
+    const settings = files.find((file) => file.path === `modules/${STATUS}.json`);
+    expect(JSON.parse(settings?.content ?? '{}')).toEqual({
+      version: 1,
+      enabled: true,
+      settings: {
+        statuses: [
+          { text: 'b', group: '', cycle: true },
+          { text: 'a', group: '', cycle: true },
+          { text: 'c', group: '', cycle: false },
+        ],
+        cycle: true,
+        interval: 15,
+        random: true,
+        prefixicon: false,
+      },
+      parameters: {},
+    });
+    expect(diagnostics.some((d) => d.code === 'status-module')).toBe(true);
     expect(diagnostics.filter((d) => d.level === 'warning')).toEqual([]);
 
-    const many = createDefaultProfile({
-      statuses: Array.from({ length: 10 }, (_, index) =>
-        createStatusItem(`s${index}`, { id: `s${index}`, active: index === 0, useInCycle: true }),
-      ),
-      statusCycle: { enabled: true, intervalSeconds: 60, random: false },
-      segments: [createSegment('status', { id: 's' })],
-    });
-    const capped = vrcoscCodec.serialize(many);
-    expect(clipsOf(chatboxOf(capped.files))).toHaveLength(4);
-    expect((chatboxOf(capped.files)['timeline'] as VObject)['length']).toBe(240);
-    expect(capped.diagnostics.some((d) => d.code === 'statuses-dropped')).toBe(true);
+    const back = vrcoscCodec.parse(files).profile;
+    expect(back.statuses.map((item) => [item.text, item.active, item.useInCycle])).toEqual([
+      ['b', true, true],
+      ['a', false, true],
+      ['c', false, false],
+    ]);
+    expect(back.statusCycle).toEqual({ enabled: true, intervalSeconds: 15, random: true });
+    expect(back.segments.map((segment) => [segment.kind, segment.template])).toEqual([
+      ['status', '{status}'],
+    ]);
   });
 
-  it('drops placeholders VRCOSC has no module for and tidies separators', () => {
+  it('covers a segment with the fewest modules and links the rest for leftovers', () => {
     const profile = createDefaultProfile({
       segments: [
-        createSegment('twitch', { id: 't', template: '{twitch_live} | {twitch_viewers} viewers' }),
+        createSegment('media', { id: 'm', template: '{artist} | {player} | {title}' }),
         createSegment('hardware', {
           id: 'h',
-          template: 'CPU {cpu_usage} | {lyrics} | GPU {gpu_temp}',
+          template: 'CPU {cpu_usage} | {window_app} | GPU {gpu_temp}',
         }),
-        createSegment('vrchat', { id: 'v', template: '🌎 {vrc_world}' }),
       ],
     });
     const { files, diagnostics } = vrcoscCodec.serialize(profile);
     const [clip] = clipsOf(chatboxOf(files));
-    // The Twitch segment lost every placeholder and is dropped as a whole; {lyrics} is tidied away.
-    expect(clip?.states[0]?.format).toBe('CPU {0} | GPU {1}');
+    // SpotiOSC covers all three media placeholders (the official module lacks {player}), and
+    // Linux Hardware Stats all three hardware ones, so each segment links exactly one module.
+    expect(clip?.states[0]?.format).toBe('{0} | {1} | {2}\nCPU {3} | {4} | GPU {5}');
     expect(clip?.linked_modules).toEqual([
-      'volcanicarts.vrcosc.officialmodules.hardwarestatsmodule',
+      'YUCP.VIRA.yeusepesmodules.spotiosc',
+      'bluscream.vrcosc.modules.linuxhardwarestatsmodule',
     ]);
-    const unsupported = diagnostics
-      .filter((d) => d.code === 'unsupported-feature')
-      .map((d) => d.message);
-    expect(unsupported.some((m) => m.includes('{twitch_live}'))).toBe(true);
-    expect(unsupported.some((m) => m.includes('{twitch_viewers}'))).toBe(true);
-    expect(unsupported.some((m) => m.includes('{lyrics}'))).toBe(true);
-    // vrc_world exists only in a stateless community module, which VRCOSC can never display.
-    expect(
-      diagnostics.some((d) => d.code === 'stateless-module' && d.message.includes('{vrc_world}')),
-    ).toBe(true);
+    expect(clip?.states[0]?.variables.map((v) => v.variable_id)).toEqual([
+      'TrackArtist',
+      'DeviceName',
+      'TrackName',
+      'cpuusage',
+      'processname',
+      'gputemp',
+    ]);
+    expect(diagnostics.filter((d) => d.code === 'unsupported-feature')).toEqual([]);
+    expect(diagnostics.filter((d) => d.code === 'stateless-module')).toEqual([]);
   });
 
   it('uses community modules only where the official set has nothing', () => {
@@ -598,6 +612,7 @@ describe('catalog', () => {
       PULSOID,
       'volcanicarts.vrcosc.officialmodules.hyperatemodule',
       'art.djdavid98.bluetoothheartrate.bluetoothheartratemodule',
+      'bluscream.vrcosc.modules.heartratestatsmodule',
     ]);
     expect(
       Object.keys(PLACEHOLDERS).filter(

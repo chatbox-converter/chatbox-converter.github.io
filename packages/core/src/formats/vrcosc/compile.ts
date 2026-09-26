@@ -1,9 +1,16 @@
 import type { PlaceholderName } from '../../model/placeholders';
 import type { SegmentOptions } from '../../model/segments';
-import { parseTemplate, renderTemplate, type TemplateValues } from '../../model/template';
-import { findModule, findVariable, sourcesFor, type VariableSource } from './catalog';
+import {
+  parseTemplate,
+  placeholdersIn,
+  renderTemplate,
+  type TemplateValues,
+} from '../../model/template';
+import { MODULES, findModule, findVariable, sourcesFor, type VariableSource } from './catalog';
 import type { VrcVariable } from './document';
+import { bluscreamModuleId } from './modules-bluscream';
 import { DEFAULT_TIMESPAN_FORMAT, datetimeFormatFor, isoToTicks, progressOptions } from './options';
+import { STATUS_MODULE_ID } from './status-module';
 import { vEqual, type VObject } from './vjson';
 
 /**
@@ -11,6 +18,12 @@ import { vEqual, type VObject } from './vjson';
  * `variables` array: `{artist} - {title}` → `{0} - {1}` with two Media
  * variables. Placeholders VRCOSC cannot provide are removed (with separator
  * tidy) and reported.
+ *
+ * Sources are chosen per segment ("segment-level module preference"): the
+ * module covering the most of the segment's placeholders wins, official
+ * modules win ties, and the remaining placeholders are covered the same way,
+ * so a heart-rate line using `{heartrate_min}` links only Heartrate Stats and
+ * a media line using `{lyrics}` only Linux Media.
  */
 export interface CompilePart {
   readonly template: string;
@@ -24,6 +37,8 @@ export interface CompileInput {
   readonly suffix: string;
   /** Text substituted for `{status}`. */
   readonly statusText: string;
+  /** `{status}` comes from the Bluscream Status module instead of the built-in text variable. */
+  readonly statusModule?: boolean;
   /** Skip community modules (only official + built-in sources). */
   readonly officialOnly?: boolean;
   /** Media state of the compound state being compiled; drives the `{play_icon}` literal. */
@@ -32,17 +47,21 @@ export interface CompileInput {
 
 export type MediaState = 'playing' | 'paused' | 'stopped';
 
-/** `{play_icon}` has no variable: it is a literal that differs per media state. */
+/** `{play_icon}` has no official variable: it is a literal that differs per media state. */
 export const PLAY_ICONS: Readonly<Record<MediaState, string>> = {
   playing: '▶',
   paused: '⏸',
   stopped: '⏹',
 };
 
+const LINUX_MEDIA_MODULE = bluscreamModuleId('linuxmediamodule');
+
 /**
  * Placeholders that reuse another placeholder's variable with different
  * options: the same DateTime with a date/offset format, the progress variable
  * without its visual bar, the speech result once VRCOSC has translated it.
+ * Linux Media has real `playicon`/`progresspercent` variables, used when it
+ * is the segment's media module.
  */
 const ALIASED_SOURCES: Partial<Record<PlaceholderName, PlaceholderName>> = {
   date: 'time',
@@ -86,37 +105,146 @@ function heartrateModule(options: SegmentOptions): string | undefined {
   }
 }
 
-function pickSource(
+function hasStates(moduleId: string): boolean {
+  return findModule(moduleId)?.mainState !== undefined;
+}
+
+/** Sources able to feed a placeholder in this segment, in catalog order. */
+function candidateSources(
   name: PlaceholderName,
   options: SegmentOptions,
   officialOnly: boolean,
-): VariableSource | undefined {
-  const candidates = sourcesFor(name).filter((source) => !officialOnly || source.official);
-  const preferredModule = heartrateModule(options);
-  if (preferredModule !== undefined) {
-    const match = candidates.find((source) => source.moduleId?.endsWith(`.${preferredModule}`));
-    if (match !== undefined) {
-      return match;
+): VariableSource[] {
+  const alias = ALIASED_SOURCES[name];
+  const sources =
+    alias === undefined ? sourcesFor(name) : [...sourcesFor(name), ...sourcesFor(alias)];
+  return sources.filter((source) => {
+    if (officialOnly && !source.official) {
+      return false;
     }
-  }
-  if (name === 'weather_temp') {
-    const wanted =
-      options.kind === 'weather' && options.temperatureUnit === 'F' ? 'tempf' : 'tempc';
-    return candidates.find((source) => source.variableId === wanted) ?? candidates[0];
-  }
-  if (name === 'timer' && options.kind !== 'custom') {
-    // A stopwatch, not a countdown, when the segment carries no target date.
-    return candidates.find((source) => source.moduleId !== null) ?? candidates[0];
-  }
-  // Prefer sources whose module has states; stateless modules never render.
-  return (
-    candidates.find((source) => source.moduleId === null || hasStates(source.moduleId)) ??
-    candidates[0]
-  );
+    if (name === 'timer') {
+      // The built-in timer is a countdown (custom segments); anything else is a stopwatch.
+      return options.kind === 'custom' ? source.moduleId === null : source.moduleId !== null;
+    }
+    return true;
+  });
 }
 
-function hasStates(moduleId: string): boolean {
-  return findModule(moduleId)?.mainState !== undefined;
+function moduleRank(moduleId: string | null): number {
+  return moduleId === null ? -1 : MODULES.findIndex((module) => module.fullId === moduleId);
+}
+
+interface Coverage {
+  readonly moduleId: string | null;
+  readonly official: boolean;
+  readonly count: number;
+}
+
+/** Modules (null = built-in) providing a placeholder here, stateless ones excluded. */
+function providersOf(
+  name: PlaceholderName,
+  part: CompilePart,
+  officialOnly: boolean,
+): VariableSource[] {
+  const seen = new Set<string | null>();
+  return candidateSources(name, part.options, officialOnly).filter((source) => {
+    if (source.moduleId !== null && !hasStates(source.moduleId)) {
+      return false;
+    }
+    if (seen.has(source.moduleId)) {
+      return false;
+    }
+    seen.add(source.moduleId);
+    return true;
+  });
+}
+
+function tallyCoverage(
+  uncovered: ReadonlySet<PlaceholderName>,
+  part: CompilePart,
+  officialOnly: boolean,
+): Coverage[] {
+  const coverage = new Map<string | null, Coverage>();
+  for (const name of uncovered) {
+    for (const source of providersOf(name, part, officialOnly)) {
+      const current = coverage.get(source.moduleId);
+      coverage.set(source.moduleId, {
+        moduleId: source.moduleId,
+        official: source.official,
+        count: (current?.count ?? 0) + 1,
+      });
+    }
+  }
+  return [...coverage.values()];
+}
+
+/**
+ * Greedy set cover over the segment's placeholders: modules ordered by how
+ * many still-uncovered placeholders they provide, the segment's preferred
+ * heart-rate provider and official modules first among equals.
+ */
+function planModules(part: CompilePart, officialOnly: boolean): (string | null)[] {
+  const preferred = heartrateModule(part.options);
+  const prefers = (moduleId: string | null): number =>
+    Number(preferred !== undefined && moduleId?.endsWith(`.${preferred}`) === true);
+  const uncovered = new Set(
+    placeholdersIn(part.template).filter((name) => name !== 'status' && name !== 'play_icon'),
+  );
+  const chosen: (string | null)[] = [];
+  while (uncovered.size > 0) {
+    const best = tallyCoverage(uncovered, part, officialOnly).sort(
+      (a, b) =>
+        b.count - a.count ||
+        prefers(b.moduleId) - prefers(a.moduleId) ||
+        Number(b.official) - Number(a.official) ||
+        moduleRank(a.moduleId) - moduleRank(b.moduleId),
+    )[0];
+    if (best === undefined) {
+      break;
+    }
+    chosen.push(best.moduleId);
+    for (const name of [...uncovered]) {
+      if (providersOf(name, part, officialOnly).some((s) => s.moduleId === best.moduleId)) {
+        uncovered.delete(name);
+      }
+    }
+  }
+  return chosen;
+}
+
+/** Among one module's variables for a placeholder, follow the segment's temperature unit. */
+function byUnit(
+  pool: readonly VariableSource[],
+  options: SegmentOptions,
+): VariableSource | undefined {
+  const suffix = options.kind === 'weather' && options.temperatureUnit === 'F' ? 'f' : 'c';
+  return pool.find((source) => source.variableId.endsWith(suffix)) ?? pool[0];
+}
+
+function pickSource(
+  name: PlaceholderName,
+  part: CompilePart,
+  chosen: readonly (string | null)[],
+  officialOnly: boolean,
+): VariableSource | undefined {
+  const candidates = candidateSources(name, part.options, officialOnly);
+  const alias = ALIASED_SOURCES[name];
+  for (const moduleId of chosen) {
+    const own = candidates.filter((source) => source.moduleId === moduleId);
+    if (own.length === 0) {
+      continue;
+    }
+    // A direct variable (Linux Media `progresspercent`) beats the aliased one of the same module.
+    const direct = alias === undefined ? own : own.filter((source) => isDirect(source, name));
+    const pool = direct.length > 0 ? direct : own;
+    return byUnit(pool, part.options);
+  }
+  // Nothing chosen covers it (stateless modules only): keep the first for the diagnostic.
+  return candidates[0];
+}
+
+function isDirect(source: VariableSource, name: PlaceholderName): boolean {
+  return findVariable(source.moduleId, source.variableId)?.canonical === name;
 }
 
 /** Options the model can express for a resolved variable (class-specific only). */
@@ -172,22 +300,29 @@ function variableOptions(
 
 const DEFAULT_FORMATS = { time: 'HH:mm', date: 'yyyy-MM-dd' } as const;
 
+function statusSource(input: CompileInput): ResolvedVariable {
+  if (input.statusModule === true) {
+    return {
+      source: { moduleId: STATUS_MODULE_ID, variableId: 'text', official: false },
+      options: {},
+    };
+  }
+  return {
+    source: { moduleId: null, variableId: 'text', official: true },
+    options: { text: input.statusText },
+  };
+}
+
 function resolve(
   name: PlaceholderName,
   part: CompilePart,
+  chosen: readonly (string | null)[],
   input: CompileInput,
 ): ResolvedVariable | undefined {
   if (name === 'status') {
-    return {
-      source: { moduleId: null, variableId: 'text', official: true },
-      options: { text: input.statusText },
-    };
+    return statusSource(input);
   }
-  const source = pickSource(
-    ALIASED_SOURCES[name] ?? name,
-    part.options,
-    input.officialOnly === true,
-  );
+  const source = pickSource(name, part, chosen, input.officialOnly === true);
   if (source === undefined) {
     return undefined;
   }
@@ -195,17 +330,15 @@ function resolve(
 }
 
 // Private-use characters that cannot occur in a real template.
-const SENTINEL = (index: number): string => `\uE000${index}\uE001`;
-const SENTINEL_PATTERN = /\uE000(\d+)\uE001/g;
+const SENTINEL = (index: number): string => `${index}`;
+const SENTINEL_PATTERN = /(\d+)/g;
 
-export function compile(input: CompileInput): CompileResult {
-  const variables: CompiledVariable[] = [];
-  const unsupported: PlaceholderName[] = [];
-  const stateless: PlaceholderName[] = [];
-  const modules: string[] = [];
+class VariableTable {
+  readonly variables: CompiledVariable[] = [];
+  readonly modules: string[] = [];
 
-  const indexOf = (name: PlaceholderName, resolved: ResolvedVariable): number => {
-    const existing = variables.findIndex(
+  indexOf(name: PlaceholderName, resolved: ResolvedVariable): number {
+    const existing = this.variables.findIndex(
       (candidate) =>
         candidate.module_id === resolved.source.moduleId &&
         candidate.variable_id === resolved.source.variableId &&
@@ -214,53 +347,68 @@ export function compile(input: CompileInput): CompileResult {
     if (existing >= 0) {
       return existing;
     }
-    variables.push({
+    this.variables.push({
       module_id: resolved.source.moduleId,
       variable_id: resolved.source.variableId,
       options: resolved.options,
       placeholder: name,
     });
     const moduleId = resolved.source.moduleId;
-    if (moduleId !== null && !modules.includes(moduleId)) {
-      modules.push(moduleId);
+    if (moduleId !== null && !this.modules.includes(moduleId)) {
+      this.modules.push(moduleId);
     }
-    return variables.length - 1;
-  };
+    return this.variables.length - 1;
+  }
+}
 
-  const rendered: string[] = [];
-  for (const part of input.parts) {
-    const values: TemplateValues = {};
-    let placeholders = 0;
-    let kept = 0;
-    for (const token of parseTemplate(part.template)) {
-      if (token.kind !== 'placeholder' || values[token.name] !== undefined) {
-        continue;
-      }
-      placeholders += 1;
-      if (token.name === 'play_icon') {
-        values[token.name] = PLAY_ICONS[input.mediaState ?? 'playing'];
-        kept += 1;
-        continue;
-      }
-      const resolved = resolve(token.name, part, input);
-      const moduleId = resolved?.source.moduleId ?? null;
-      if (resolved === undefined) {
-        values[token.name] = '';
-        pushUnique(unsupported, token.name);
-      } else if (moduleId !== null && !hasStates(moduleId)) {
-        values[token.name] = '';
-        pushUnique(stateless, token.name);
-      } else {
-        values[token.name] = SENTINEL(indexOf(token.name, resolved));
-        kept += 1;
-      }
-    }
-    // A segment that lost every placeholder is only decoration: drop it entirely.
-    if (placeholders > 0 && kept === 0) {
+function compilePart(
+  part: CompilePart,
+  input: CompileInput,
+  table: VariableTable,
+  report: { unsupported: PlaceholderName[]; stateless: PlaceholderName[] },
+): string | undefined {
+  const chosen = planModules(part, input.officialOnly === true);
+  const values: TemplateValues = {};
+  let placeholders = 0;
+  let kept = 0;
+  for (const token of parseTemplate(part.template)) {
+    if (token.kind !== 'placeholder' || values[token.name] !== undefined) {
       continue;
     }
-    const text = renderTemplate(part.template, values, { tidyEmpty: true });
-    if (text !== '') {
+    placeholders += 1;
+    if (token.name === 'play_icon' && !chosen.includes(LINUX_MEDIA_MODULE)) {
+      values[token.name] = PLAY_ICONS[input.mediaState ?? 'playing'];
+      kept += 1;
+      continue;
+    }
+    const resolved = resolve(token.name, part, chosen, input);
+    const moduleId = resolved?.source.moduleId ?? null;
+    if (resolved === undefined) {
+      values[token.name] = '';
+      pushUnique(report.unsupported, token.name);
+    } else if (moduleId !== null && !hasStates(moduleId)) {
+      values[token.name] = '';
+      pushUnique(report.stateless, token.name);
+    } else {
+      values[token.name] = SENTINEL(table.indexOf(token.name, resolved));
+      kept += 1;
+    }
+  }
+  // A segment that lost every placeholder is only decoration: drop it entirely.
+  if (placeholders > 0 && kept === 0) {
+    return undefined;
+  }
+  const text = renderTemplate(part.template, values, { tidyEmpty: true });
+  return text === '' ? undefined : text;
+}
+
+export function compile(input: CompileInput): CompileResult {
+  const table = new VariableTable();
+  const report = { unsupported: [] as PlaceholderName[], stateless: [] as PlaceholderName[] };
+  const rendered: string[] = [];
+  for (const part of input.parts) {
+    const text = compilePart(part, input, table, report);
+    if (text !== undefined) {
       rendered.push(text);
     }
   }
@@ -269,7 +417,13 @@ export function compile(input: CompileInput): CompileResult {
     SENTINEL_PATTERN,
     (_match, index: string) => `{${index}}`,
   );
-  return { format, variables, unsupported, stateless, modules };
+  return {
+    format,
+    variables: table.variables,
+    unsupported: report.unsupported,
+    stateless: report.stateless,
+    modules: table.modules,
+  };
 }
 
 function pushUnique<T>(list: T[], item: T): void {

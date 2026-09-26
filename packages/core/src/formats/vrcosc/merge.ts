@@ -4,8 +4,9 @@ import type { ConfigFile, DiagnosticCollector } from '../codec';
 import { compile, type CompilePart } from './compile';
 import { documentToJson, readDocument, type VrcDocument, type VrcState } from './document';
 import { signatureOf, type StateMapping, type VrcoscExtras } from './parse';
+import { STATUS_MODULE_ID, statusModuleSettings } from './status-module';
 import { reconcileVariables } from './variables';
-import { parseVJson, stringifyVJson } from './vjson';
+import { isVObject, parseVJson, stringifyVJson, vObject } from './vjson';
 
 /**
  * VRCOSC → VRCOSC round trip: when the profile still carries the imported
@@ -86,7 +87,15 @@ function compileState(
   original: VrcState,
   statusText: string,
 ): VrcState {
-  const compiled = compile({ parts, separator: '\n', prefix: '', suffix: '', statusText });
+  const statusModule = original.variables.some((v) => v.module_id === STATUS_MODULE_ID);
+  const compiled = compile({
+    parts,
+    separator: '\n',
+    prefix: '',
+    suffix: '',
+    statusText,
+    statusModule,
+  });
   const reconciled = reconcileVariables(original.variables, compiled.variables, compiled.format);
   return { ...original, enabled: true, format: reconciled.format, variables: reconciled.variables };
 }
@@ -197,7 +206,30 @@ export function mergeSerialize(
     { path: 'chatbox.json', content: stringifyVJson(documentToJson(merged)) },
   ];
   for (const [fullId, content] of Object.entries(extras.modules)) {
-    files.push({ path: `modules/${fullId}.json`, content });
+    files.push({
+      path: `modules/${fullId}.json`,
+      content: fullId === STATUS_MODULE_ID ? withStatusList(content, profile) : content,
+    });
   }
   return files;
+}
+
+/** The Status module file with its list/cycle settings refreshed from the profile. */
+function withStatusList(content: string, profile: ChatboxProfile): string {
+  let json;
+  try {
+    json = parseVJson(content, STATUS_MODULE_ID);
+  } catch {
+    return content;
+  }
+  if (!isVObject(json)) {
+    return content;
+  }
+  const kept = Object.entries(vObject(json['settings'])).filter(
+    ([key]) => !['cycle', 'interval', 'random'].includes(key),
+  );
+  return stringifyVJson({
+    ...json,
+    settings: { ...Object.fromEntries(kept), ...statusModuleSettings(profile) },
+  });
 }

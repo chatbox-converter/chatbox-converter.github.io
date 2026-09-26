@@ -7,59 +7,89 @@ import { findModule, officialModuleId, type VrcoscModule } from './catalog';
 import { compile, type CompilePart, type MediaState } from './compile';
 import {
   DEFAULT_TIMELINE_LENGTH,
-  MAX_TIMELINE_LENGTH,
   documentToJson,
   type VrcClip,
   type VrcDocument,
   type VrcState,
 } from './document';
 import { mergeSerialize } from './merge';
+import { bluscreamModuleId } from './modules-bluscream';
+import { STATUS_MODULE_ID, needsStatusModule, statusModuleSettings } from './status-module';
 import { finalizeVariable } from './variables';
 import { stringifyVJson, type VObject } from './vjson';
 
 /**
- * Profile → VRCOSC. One clip (or one per cycled status) on layer 0 whose main
- * compound state is the whole line; extra compound states cover paused/stopped
- * media, disconnected heart rate, AFK and stopwatch variants.
+ * Profile → VRCOSC. One clip on layer 0 whose main compound state is the whole
+ * line; every other state of every linked module gets its own compound state
+ * (VRCOSC hides the clip when the running modules' states match none), with
+ * the segment swapped for its paused/stopped/disconnected template or hidden.
  */
 const AFK_MODULE = officialModuleId('afkdetectionmodule');
-
-/** Non-main states that get their own compound state, keyed by the module's main state. */
-const VARIANT_STATES: Readonly<Record<string, readonly string[]>> = {
-  playing: ['paused', 'stopped'],
-  connected: ['disconnected'],
-  notafk: ['afk'],
-  started: ['paused', 'stopped'],
-};
-
-function variantStates(module: VrcoscModule): readonly string[] {
-  return module.mainState === undefined ? [] : (VARIANT_STATES[module.mainState] ?? []);
-}
+const LINUX_AUDIO_FX_MODULE = bluscreamModuleId('linuxaudiofxmodule');
+const MCB_PARITY_MODULE = bluscreamModuleId('mcbparitymodule');
+/** MagicChatbox Parity only changes state for its instance variables. */
+const MCB_PARITY_INSTANCE_PLACEHOLDERS: readonly PlaceholderName[] = [
+  'vrc_instance_capacity',
+  'vrc_master',
+];
+/** Above this many compound states only single-variant combinations are written. */
+const MAX_COMPOUND_STATES = 512;
 
 interface ClipPlan {
   readonly linkedModules: readonly string[];
   readonly states: readonly VrcState[];
   readonly unsupported: readonly PlaceholderName[];
   readonly stateless: readonly PlaceholderName[];
+  readonly truncated: boolean;
 }
 
 interface Combination {
   readonly states: Readonly<Record<string, string>>;
 }
 
-function combinations(modules: readonly string[]): Combination[] {
-  let result: Record<string, string>[] = [{}];
-  for (const moduleId of modules) {
-    const module = findModule(moduleId);
+interface StatefulModule {
+  readonly id: string;
+  readonly main: string;
+  readonly variants: readonly string[];
+}
+
+function statefulModules(modules: readonly string[]): StatefulModule[] {
+  const result: StatefulModule[] = [];
+  for (const id of modules) {
+    const module = findModule(id);
     if (module?.mainState === undefined) {
       continue;
     }
-    const options = [module.mainState, ...variantStates(module)];
-    result = result.flatMap((partial) =>
-      options.map((stateId) => ({ ...partial, [moduleId]: stateId })),
-    );
+    const main = module.mainState;
+    result.push({ id, main, variants: Object.keys(module.states).filter((s) => s !== main) });
   }
-  return result.map((states) => ({ states }));
+  return result;
+}
+
+/** Every state of every linked module; past the cap, at most one module leaves its main state. */
+function combinations(modules: readonly string[]): { list: Combination[]; truncated: boolean } {
+  const stateful = statefulModules(modules);
+  const product = stateful.reduce((total, module) => total * (module.variants.length + 1), 1);
+  const mains: Record<string, string> = {};
+  for (const module of stateful) {
+    mains[module.id] = module.main;
+  }
+  if (product <= MAX_COMPOUND_STATES) {
+    let result: Record<string, string>[] = [{}];
+    for (const module of stateful) {
+      result = result.flatMap((partial) =>
+        [module.main, ...module.variants].map((stateId) => ({ ...partial, [module.id]: stateId })),
+      );
+    }
+    return { list: result.map((states) => ({ states })), truncated: false };
+  }
+  const list: Combination[] = [{ states: mains }];
+  for (const module of stateful) {
+    for (const stateId of module.variants) {
+      list.push({ states: { ...mains, [module.id]: stateId } });
+    }
+  }
+  return { list, truncated: true };
 }
 
 /** The media module's state in this combination, if one is linked. */
@@ -70,6 +100,47 @@ function mediaStateOf(combination: Combination): MediaState {
     }
   }
   return 'playing';
+}
+
+/**
+ * Template of a segment while one of its modules is in a non-main state:
+ * a specific template for the modelled variants, `undefined` when the state
+ * renders like the main one, `''` (segment hidden) for everything else.
+ */
+function variantTemplate(
+  segment: Segment,
+  module: VrcoscModule,
+  stateId: string,
+): string | undefined {
+  const { options } = segment;
+  if (module.mainState === 'playing') {
+    const lower = stateId.toLowerCase();
+    if (lower.startsWith('playing')) {
+      return undefined;
+    }
+    if (options.kind !== 'media') {
+      return '';
+    }
+    return lower.startsWith('paused') ? options.pausedTemplate : options.stoppedTemplate;
+  }
+  if (
+    module.mainState === 'connected' &&
+    stateId === 'disconnected' &&
+    options.kind === 'heartrate'
+  ) {
+    return options.disconnectedTemplate;
+  }
+  if (module.mainState === 'started') {
+    return stateId === 'stopped' ? '' : undefined;
+  }
+  if (module.fullId === LINUX_AUDIO_FX_MODULE || module.fullId === AFK_MODULE) {
+    return undefined;
+  }
+  if (module.fullId === MCB_PARITY_MODULE) {
+    const names = placeholdersIn(segment.template);
+    return MCB_PARITY_INSTANCE_PLACEHOLDERS.some((name) => names.includes(name)) ? '' : undefined;
+  }
+  return '';
 }
 
 function segmentPartFor(
@@ -85,14 +156,7 @@ function segmentPartFor(
     if (stateId === undefined || module?.mainState === undefined || stateId === module.mainState) {
       continue;
     }
-    if (segment.options.kind === 'media' && module.mainState === 'playing') {
-      template =
-        stateId === 'paused' ? segment.options.pausedTemplate : segment.options.stoppedTemplate;
-    } else if (segment.options.kind === 'heartrate' && stateId === 'disconnected') {
-      template = segment.options.disconnectedTemplate;
-    } else if (module.mainState === 'started' && stateId === 'stopped') {
-      template = '';
-    }
+    template = variantTemplate(segment, module, stateId) ?? template;
   }
   if (combination.states[AFK_MODULE] === 'afk' && segment.kind === 'status') {
     template = profile.afk.template;
@@ -100,17 +164,14 @@ function segmentPartFor(
   return template === '' ? undefined : { template, options: segment.options };
 }
 
-function planClip(
-  profile: ChatboxProfile,
-  segments: readonly Segment[],
-  statusText: string,
-): ClipPlan {
+function planClip(profile: ChatboxProfile, segments: readonly Segment[]): ClipPlan {
   const separator = profile.output.separateWithNewlines ? '\n' : profile.output.separator;
   const base = {
     separator,
     prefix: profile.output.prefix,
     suffix: profile.output.suffix,
-    statusText,
+    statusText: activeStatus(profile)?.text ?? '',
+    statusModule: needsStatusModule(profile),
   };
   const segmentModules = segments.map(
     (segment) =>
@@ -138,7 +199,8 @@ function planClip(
   const stateless = [...main.stateless, ...(afkCompiled?.stateless ?? [])];
 
   const states: VrcState[] = [];
-  for (const combination of combinations(linkedModules)) {
+  const { list, truncated } = combinations(linkedModules);
+  for (const combination of list) {
     const afkEverything = combination.states[AFK_MODULE] === 'afk' && profile.afk.replaceEverything;
     const parts = afkEverything
       ? [afkPart]
@@ -151,6 +213,7 @@ function planClip(
     if (compiled.format === '') {
       continue;
     }
+    // Dictionary keys in `linked_modules` order: VRCOSC compares them with `SequenceEqual`.
     const dictionary: Record<string, string> = {};
     for (const moduleId of linkedModules) {
       const stateId = combination.states[moduleId];
@@ -167,32 +230,15 @@ function planClip(
       states: linkedModules.length === 0 ? null : dictionary,
     });
   }
-  return { linkedModules, states, unsupported, stateless };
+  return { linkedModules, states, unsupported, stateless, truncated };
 }
 
-function statusTexts(profile: ChatboxProfile, collector: DiagnosticCollector): string[] {
-  const active = activeStatus(profile)?.text ?? '';
-  if (!profile.statusCycle.enabled) {
-    return [active];
-  }
-  const cycled = profile.statuses.filter((item) => item.useInCycle);
-  const pool = (cycled.length > 0 ? cycled : profile.statuses).map((item) => item.text);
-  if (pool.length < 2) {
-    return [active];
-  }
-  if (profile.statusCycle.random) {
-    collector.info(
-      'cycle-order',
-      'VRCOSC plays clips in timeline order; random status cycling is not available.',
-    );
-  }
-  return pool;
-}
-
-function moduleFile(moduleId: string, profile: ChatboxProfile): ConfigFile {
+function moduleSettings(moduleId: string, profile: ChatboxProfile): VObject {
   const settings: VObject = {};
-  const module = findModule(moduleId);
-  if (module?.fullId.endsWith('.datetimemodule') === true) {
+  if (moduleId === STATUS_MODULE_ID) {
+    return statusModuleSettings(profile);
+  }
+  if (moduleId.endsWith('.datetimemodule')) {
     const zone = profile.segments.find(
       (segment): segment is Segment & { options: { kind: 'time'; timezone: string } } =>
         segment.options.kind === 'time' && segment.options.timezone !== '',
@@ -201,7 +247,14 @@ function moduleFile(moduleId: string, profile: ChatboxProfile): ConfigFile {
       settings['timezone'] = zone.options.timezone;
     }
   }
-  if (module?.fullId.endsWith('.weathermodule') === true) {
+  if (moduleId.endsWith('.heartratestatsmodule')) {
+    // `HeartrateProvider`: 0 Pulsoid (default), 1 HypeRate, 2 Osc.
+    const heart = profile.segments.find((segment) => segment.options.kind === 'heartrate');
+    if (heart?.options.kind === 'heartrate' && heart.options.provider === 'hyperate') {
+      settings['provider'] = 1;
+    }
+  }
+  if (moduleId.endsWith('.weathermodule') || moduleId.endsWith('.openmeteoweathermodule')) {
     const weather = profile.segments.find((segment) => segment.options.kind === 'weather');
     if (
       weather?.options.kind === 'weather' &&
@@ -211,6 +264,11 @@ function moduleFile(moduleId: string, profile: ChatboxProfile): ConfigFile {
       settings['location'] = weather.options.city;
     }
   }
+  return settings;
+}
+
+function moduleFile(moduleId: string, profile: ChatboxProfile): ConfigFile {
+  const settings = moduleSettings(moduleId, profile);
   return {
     path: `modules/${moduleId}.json`,
     content: stringifyVJson({ version: 1, enabled: true, settings, parameters: {} }),
@@ -240,6 +298,12 @@ function reportPlan(plan: ClipPlan, profile: ChatboxProfile, collector: Diagnost
       `Placeholder {${name}} is only provided by a module that registers no ChatBox states; VRCOSC never shows a clip linked to such a module, so the placeholder was dropped.`,
     );
   }
+  if (plan.truncated) {
+    collector.warn(
+      'too-many-states',
+      `The linked modules have more than ${MAX_COMPOUND_STATES} state combinations; only the states where at most one module leaves its main state were written, so the clip hides when several modules are idle at once.`,
+    );
+  }
   if (profile.segments.some((segment) => segment.visibility.desktop !== segment.visibility.vr)) {
     collector.info(
       'visibility',
@@ -252,6 +316,17 @@ function reportPlan(plan: ClipPlan, profile: ChatboxProfile, collector: Diagnost
       'VRCOSC detects AFK from VRChat/SteamVR itself; the AFK timeout is not configurable.',
     );
   }
+  if (plan.linkedModules.includes(STATUS_MODULE_ID)) {
+    const module = findModule(STATUS_MODULE_ID);
+    collector.info(
+      'status-module',
+      `The status list (${profile.statuses.length} statuses${profile.statusCycle.enabled ? ', cycling' : ''}) is written to modules/${STATUS_MODULE_ID}.json for the ${module?.title ?? 'Status'} module of ${module?.packageId ?? ''}; install that package (${module?.repository ?? ''}) so {status} resolves.`,
+    );
+  }
+  reportPackages(plan, collector);
+}
+
+function reportPackages(plan: ClipPlan, collector: DiagnosticCollector): void {
   const packages = new Map<string, VrcoscModule>();
   for (const moduleId of plan.linkedModules) {
     const module = findModule(moduleId);
@@ -281,41 +356,20 @@ export function serializeVrcosc(profile: ChatboxProfile): SerializeResult {
     return { files: merged, diagnostics: collector.all() };
   }
   const segments = profile.segments.filter((segment) => segment.enabled);
-  const texts = statusTexts(profile, collector);
-  let interval = Math.max(1, Math.round(profile.statusCycle.intervalSeconds));
-  let clipCount = texts.length;
-  if (clipCount > 1 && clipCount * interval > MAX_TIMELINE_LENGTH) {
-    const maxClips = Math.floor(MAX_TIMELINE_LENGTH / interval);
-    if (maxClips < 2) {
-      interval = Math.floor(MAX_TIMELINE_LENGTH / 2);
-    }
-    clipCount = Math.max(2, Math.min(clipCount, Math.floor(MAX_TIMELINE_LENGTH / interval)));
-    collector.warn(
-      'statuses-dropped',
-      `VRCOSC timelines are at most ${MAX_TIMELINE_LENGTH} s; only the first ${clipCount} cycled statuses fit at ${interval} s each.`,
-    );
-  }
-  const clips: VrcClip[] = [];
-  let firstPlan: ClipPlan | undefined;
-  for (let index = 0; index < clipCount; index += 1) {
-    const plan = planClip(profile, segments, texts[index] ?? '');
-    firstPlan ??= plan;
-    const single = clipCount === 1;
-    clips.push({
-      layer: 0,
-      enabled: true,
-      name: single ? profile.meta.name : `Status ${index + 1}`,
-      start: single ? 0 : index * interval,
-      end: single ? DEFAULT_TIMELINE_LENGTH : (index + 1) * interval,
-      linked_modules: plan.linkedModules,
-      states: plan.states,
-      events: [],
-    });
-  }
-  const plan = firstPlan ?? { linkedModules: [], states: [], unsupported: [], stateless: [] };
+  const plan = planClip(profile, segments);
+  const clip: VrcClip = {
+    layer: 0,
+    enabled: true,
+    name: profile.meta.name,
+    start: 0,
+    end: DEFAULT_TIMELINE_LENGTH,
+    linked_modules: plan.linkedModules,
+    states: plan.states,
+    events: [],
+  };
   const document: VrcDocument = {
     version: 1,
-    timeline: { length: clipCount === 1 ? DEFAULT_TIMELINE_LENGTH : clipCount * interval, clips },
+    timeline: { length: DEFAULT_TIMELINE_LENGTH, clips: [clip] },
   };
   reportPlan(plan, profile, collector);
   const files: ConfigFile[] = [

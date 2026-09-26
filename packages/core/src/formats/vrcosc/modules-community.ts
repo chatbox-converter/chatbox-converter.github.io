@@ -1,4 +1,5 @@
 import { event, state, variable, type VrcoscModule } from './catalog-types';
+import { BLUSCREAM, BLUSCREAM_MODULES, BLUSCREAM_REPO, community } from './modules-bluscream';
 import {
   HARDWARE_VARIABLES,
   HEARTRATE_SETTINGS,
@@ -12,27 +13,9 @@ import {
  * Community packages that register ChatBox items
  * (`.references/notes/ecosystem-plugins.md` Part A). Package ids keep their
  * original case; variable ids created from raw string lookups (Yeusepe's
- * modules) keep their PascalCase.
+ * modules) keep their PascalCase. The Bluscream modules added in `2026.0926.2`
+ * live in `modules-bluscream.ts`.
  */
-function community(
-  packageId: string,
-  repository: string,
-  shortId: string,
-  title: string,
-  body: Omit<VrcoscModule, 'fullId' | 'packageId' | 'title' | 'repository' | 'official'>,
-): VrcoscModule {
-  return {
-    fullId: `${packageId}.${shortId}`,
-    packageId,
-    title,
-    repository,
-    official: false,
-    ...body,
-  };
-}
-
-const BLUSCREAM = 'bluscream.vrcosc.modules';
-const BLUSCREAM_REPO = 'Bluscream/VRCOSC-Modules';
 const YEUSEPE = 'YUCP.VIRA.yeusepesmodules';
 const YEUSEPE_REPO = 'Yeusepe/Yeusepes-Modules';
 
@@ -110,8 +93,12 @@ export const COMMUNITY_MODULES: readonly VrcoscModule[] = [
       gpumodel: variable('string', 'GPU Model'),
       networkdownload: variable('string', 'Network Download', 'net_down'),
       networkupload: variable('string', 'Network Upload', 'net_up'),
-      networkrxtotal: variable('string', 'Network RX Total', 'net_total_down'),
-      networktxtotal: variable('string', 'Network TX Total', 'net_total_up'),
+      networkrxtotal: variable('string', 'Network Received Total', 'net_total_down'),
+      networktxtotal: variable('string', 'Network Sent Total', 'net_total_up'),
+      networkmaxdown: variable('float', 'Network Max Download (Mbps, session)', 'net_max_down'),
+      networkmaxup: variable('float', 'Network Max Upload (Mbps, session)', 'net_max_up'),
+      networkutilization: variable('int', 'Network Utilization (%)', 'net_utilization'),
+      networklinkspeed: variable('int', 'Network Link Speed (Mbps)'),
       systemtemp: variable('int', 'System Temp (C)'),
       maxtemp: variable('int', 'Max Temp (C)'),
       windowtitle: variable('string', 'Active Window Title', 'window_title'),
@@ -145,25 +132,31 @@ export const COMMUNITY_MODULES: readonly VrcoscModule[] = [
       timeremaining: variable('timespan', 'Time Remaining', 'remaining'),
       duration: variable('timespan', 'Duration', 'duration'),
       progressvisual: variable('progress', 'Progress Visual', 'progress_bar'),
+      progresspercent: variable('int', 'Progress (%)', 'progress_percent'),
+      playicon: variable('string', 'Play Icon', 'play_icon'),
+      lyrics: variable('string', 'Lyrics (current line)', 'lyrics'),
       volume: variable('int', 'Volume', 'volume'),
     },
-    settings: {},
+    settings: { lyrics: false },
   }),
   community(BLUSCREAM, BLUSCREAM_REPO, 'openxrstatisticsmodule', 'OpenXR Stats', {
     mainState: 'default',
     states: {
-      default: state('Default', 'HMD: {0}%\nLHand: {1}%\nRHand: {2}%', [
+      default: state('Default', 'HMD: {0}\nLHand: {1}\nRHand: {2}', [
         'hmd_battery',
         'lhand_battery',
         'rhand_battery',
       ]),
-      noruntime: state('No Runtime', 'OpenXR runtime not found'),
-      error: state('Error', 'OpenXR error — check logs'),
+      noruntime: state('No Runtime', 'OpenXR runtime not available'),
     },
     events: {},
     variables: {
       fps: variable('float', 'FPS', 'vr_fps'),
-      userpresent: variable('bool', 'User Present'),
+      targethz: variable('int', 'Target Hz (headset refresh rate)', 'vr_target_hz'),
+      dashboardvisible: variable('bool', 'Dashboard Visible'),
+      runtimename: variable('string', 'Runtime Name'),
+      systemname: variable('string', 'System Name'),
+      sessionstate: variable('string', 'Session State'),
       hmd_battery: variable('int', 'HMD Battery (%)', 'hmd_battery'),
       hmd_charging: variable('bool', 'HMD Charging'),
       lhand_battery: variable('int', 'Left Hand Battery (%)', 'left_controller_battery'),
@@ -171,7 +164,7 @@ export const COMMUNITY_MODULES: readonly VrcoscModule[] = [
       rhand_battery: variable('int', 'Right Hand Battery (%)', 'right_controller_battery'),
       rhand_charging: variable('bool', 'Right Hand Charging'),
     },
-    settings: {},
+    settings: { overlaysession: true },
   }),
   community(BLUSCREAM, BLUSCREAM_REPO, 'desktopfpsmodule', 'Desktop FPS', {
     // Registers no states: a clip linked to it can never evaluate (see MAPPING.md).
@@ -247,6 +240,7 @@ export const COMMUNITY_MODULES: readonly VrcoscModule[] = [
     variables: {},
     settings: {},
   }),
+  ...BLUSCREAM_MODULES,
   community(YEUSEPE, YEUSEPE_REPO, 'spotiosc', 'SpotiOSC', {
     mainState: 'Playing_Clean_NoShuffle',
     states: spotioscStates(),

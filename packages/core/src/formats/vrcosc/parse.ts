@@ -23,6 +23,7 @@ import {
   type ModuleSettings,
   type StateHints,
 } from './parse-state';
+import { STATUS_MODULE_ID, readStatusModule } from './status-module';
 import { isVObject, parseVJson, vBoolean, vNumber, vObject, vString, type VObject } from './vjson';
 
 /** What the parser keeps in `profile.extras.vrcosc` so a VRCOSC→VRCOSC round trip is lossless. */
@@ -184,6 +185,8 @@ class ProfileBuilder {
   afkMapping: { clip: number; state: number } | undefined;
   minimalBackground = false;
   hasStatusSegment = false;
+  /** A state references the Bluscream Status module: the status list comes from its settings. */
+  usesStatusModule = false;
 
   constructor(
     readonly collector: DiagnosticCollector,
@@ -217,6 +220,9 @@ class ProfileBuilder {
     clip.states.forEach((state, stateIndex) => {
       if (!state.enabled) {
         return;
+      }
+      if (state.variables.some((variable) => variable.module_id === STATUS_MODULE_ID)) {
+        this.usesStatusModule = true;
       }
       this.minimalBackground ||= state.use_minimal_background;
       const variants = variantsOf(state);
@@ -564,11 +570,14 @@ function assembleProfile(
     `Imported from VRCOSC (timeline ${document.timeline.length} s, ${document.timeline.clips.length} clips).`,
     ...builder.notes,
   ];
+  const status = builder.usesStatusModule
+    ? readStatusModule(builder.settings.get(STATUS_MODULE_ID), builder.collector)
+    : { statuses: builder.statuses, statusCycle: builder.statusCycle() };
   return {
     version: 1,
     meta: { name: 'VRCOSC ChatBox', source: 'vrcosc', notes },
-    statuses: builder.statuses,
-    statusCycle: builder.statusCycle(),
+    statuses: status.statuses,
+    statusCycle: status.statusCycle,
     afk: builder.afk,
     output: {
       separator: ' ┆ ',
